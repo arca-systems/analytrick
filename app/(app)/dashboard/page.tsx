@@ -1,11 +1,11 @@
+// app/(app)/dashboard/page.tsx
 import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 300
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
-  // KPIs em paralelo
   const [
     { count: totalItems },
     { count: totalSellers },
@@ -23,55 +23,47 @@ export default async function DashboardPage() {
   ])
 
   const kpis = [
-    { label: 'Anúncios',    value: totalItems?.toLocaleString('pt-BR') ?? '—',   color: '#60a5fa' },
-    { label: 'Vendedores',  value: totalSellers?.toLocaleString('pt-BR') ?? '—', color: '#a78bfa' },
-    { label: 'Categorias',  value: totalCategories?.toLocaleString('pt-BR') ?? '—', color: '#4ade80' },
+    { label: 'Anúncios',   value: totalItems?.toLocaleString('pt-BR') ?? '—',      color: '#60a5fa' },
+    { label: 'Vendedores', value: totalSellers?.toLocaleString('pt-BR') ?? '—',    color: '#a78bfa' },
+    { label: 'Categorias', value: totalCategories?.toLocaleString('pt-BR') ?? '—', color: '#4ade80' },
   ]
 
   return (
-    <div className="p-6 space-y-6 animate-in">
-      <div>
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Visão geral do banco de dados</p>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+    <div style={{ padding: 24 }}>
+      <h1 style={{ color: '#fff', marginBottom: 24 }}>Dashboard</h1>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 32 }}>
         {kpis.map(k => (
-          <div key={k.label}
-               className="bg-surface-raised border border-surface-border rounded-xl p-5">
-            <p className="text-xs text-text-secondary font-600 uppercase tracking-wide">{k.label}</p>
-            <p className="text-3xl font-800 mt-1" style={{ color: k.color }}>{k.value}</p>
+          <div key={k.label} style={{
+            background: '#161b25', border: '1px solid #1e2535',
+            borderRadius: 12, padding: '20px 24px', flex: 1
+          }}>
+            <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>{k.label}</p>
+            <p style={{ color: k.color, fontSize: 32, fontWeight: 800, margin: '4px 0 0' }}>{k.value}</p>
           </div>
         ))}
       </div>
-
-      {/* Top 5 mais vendidos */}
-      <div className="bg-surface-raised border border-surface-border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-surface-border">
-          <h2 className="text-sm font-700 text-white">Top 5 Mais Vendidos</h2>
+      <div style={{ background: '#161b25', border: '1px solid #1e2535', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2535' }}>
+          <h2 style={{ color: '#fff', margin: 0, fontSize: 14 }}>Top 5 Mais Vendidos</h2>
         </div>
-        <table className="at-table">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
-            <tr>
-              <th>#</th>
-              <th>Título</th>
-              <th>Marca</th>
-              <th>Preço</th>
-              <th>Vendas</th>
-              <th>Receita</th>
+            <tr style={{ background: '#1e3a8a' }}>
+              {['#','Título','Marca','Preço','Vendas','Receita'].map(h => (
+                <th key={h} style={{ color: '#fff', padding: '9px 12px', textAlign: 'left', fontWeight: 700, fontSize: 10 }}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {topItems?.map((item, i) => (
-              <tr key={item.item_id}>
-                <td className="text-text-muted font-mono text-xs">{i + 1}</td>
-                <td className="text-white max-w-[300px] truncate">{item.title}</td>
-                <td>{item.attributes_brand ?? '—'}</td>
-                <td className="text-white">R$ {item.price?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                <td className="text-accent-orange font-700">{item.sold_quantity?.toLocaleString('pt-BR')}</td>
-                <td className="text-accent-green font-700">
-                  {item.receita ? 'R$ ' + item.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}
+              <tr key={item.item_id} style={{ borderBottom: '1px solid #1e2535' }}>
+                <td style={{ padding: '8px 12px', color: '#64748b' }}>{i + 1}</td>
+                <td style={{ padding: '8px 12px', color: '#fff', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</td>
+                <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{(item as any).attributes_brand ?? '—'}</td>
+                <td style={{ padding: '8px 12px', color: '#fff' }}>R$ {item.price?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td style={{ padding: '8px 12px', color: '#fb923c', fontWeight: 700 }}>{item.sold_quantity?.toLocaleString('pt-BR')}</td>
+                <td style={{ padding: '8px 12px', color: '#4ade80', fontWeight: 700 }}>
+                  {item.receita ? 'R$ ' + (item.receita as number).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '—'}
                 </td>
               </tr>
             ))}
