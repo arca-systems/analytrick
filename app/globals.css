@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand:       #ffe600;
+  --surface:     #0f1117;
+  --surface-r:   #161b25;
+  --border:      #1e2535;
+  --hover:       #1a2133;
+  --txt:         #f1f5f9;
+  --txt-s:       #94a3b8;
+  --txt-m:       #64748b;
+  --green:       #4ade80;
+  --red:         #ef4444;
+  --blue:        #60a5fa;
+  --purple:      #a78bfa;
+  --orange:      #fb923c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--surface);
+  color: var(--txt);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+
+/* Tabela padrão */
+.at-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.at-table thead th {
+  background: #1e3a8a;
+  color: #fff;
+  padding: 9px 12px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 2px solid #1d4ed8;
+  border-right: 1px solid #1e58d8;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.at-table thead th:hover { background: #1d4ed8; }
+.at-table tbody tr { border-bottom: 1px solid var(--border); }
+.at-table tbody tr:hover td { background: var(--hover); }
+.at-table tbody td {
+  padding: 8px 12px;
+  color: var(--txt-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Badges logística */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.badge-full   { background: #0c4a6e; color: #38bdf8; }
+.badge-trad   { background: #1e3a5f; color: #93c5fd; }
+.badge-cat    { background: #1e1a4a; color: #a78bfa; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fadeIn .2s ease forwards; }
