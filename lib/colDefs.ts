@@ -127,3 +127,26 @@ export const TOP100_COLS: ColDef[] = [
 export const HL_COLS: ColDef[] = AN_COLS.filter(c =>
   !['variation_01','variation_02','variation_03','variation_04','product'].includes(c.key)
 )
+
+// ── Produtos (sem canal) ─────────────────────────────────────
+export const PRODUTO_COLS: ColDef[] = [
+  { key: 'thumbnail',        label: 'IMAGEM',      w: '90px',  sortable: false, visible: true,  fixed: true },
+  { key: 'title',            label: 'TÍTULO',      w: '260px', sortable: true,  visible: true,  fixed: true },
+  { key: 'brand',            label: 'MARCA',       w: '120px', sortable: true,  visible: true  },
+  { key: 'category',         label: 'CATEGORIA',   w: '150px', sortable: true,  visible: true  },
+  { key: 'price',            label: 'PREÇO',       w: '100px', sortable: true,  visible: true  },
+  { key: 'sku',              label: 'SKU',         w: '90px',  sortable: true,  visible: true  },
+  { key: 'gtin',             label: 'GTIN',        w: '90px',  sortable: false, visible: false },
+  { key: 'status',           label: 'STATUS',      w: '80px',  sortable: true,  visible: true  },
+  { key: 'created_at',       label: 'CRIADO EM',   w: '110px', sortable: true,  visible: false },
+]
+
+// ── Fornecedores (sem canal) ─────────────────────────────────
+export const FORNECEDOR_COLS: ColDef[] = [
+  { key: 'name',             label: 'NOME',        w: '200px', sortable: true,  visible: true,  fixed: true },
+  { key: 'email',            label: 'E-MAIL',      w: '180px', sortable: true,  visible: true  },
+  { key: 'phone',            label: 'TELEFONE',    w: '120px', sortable: false, visible: true  },
+  { key: 'country',          label: 'PAÍS',        w: '90px',  sortable: true,  visible: true  },
+  { key: 'status',           label: 'STATUS',      w: '80px',  sortable: true,  visible: true  },
+  { key: 'created_at',       label: 'CADASTRO',    w: '100px', sortable: true,  visible: false },
+]

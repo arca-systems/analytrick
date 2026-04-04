@@ -3,99 +3,89 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { DataTable } from '@/components/table/DataTable'
-import { ColDef, CHANNELS, TABS, TabId, Channel } from '@/types'
+import { ColDef, CHANNELS, TABS_ML, TABS_NONE, TabId, Channel } from '@/types'
 import {
-  AN_COLS, CAT_COLS, BRAND_COLS, TREND_COLS, USER_COLS, TOP100_COLS, HL_COLS,
+  AN_COLS, CAT_COLS, BRAND_COLS, TREND_COLS, USER_COLS,
+  PRODUTO_COLS, FORNECEDOR_COLS,
 } from '@/lib/colDefs'
 
-// ── Tab configs ──────────────────────────────────────────────
-const TAB_CONFIGS: Record<TabId, {
+// ── Configuração por tab ─────────────────────────────────────
+const TAB_CONFIG: Record<TabId, {
   cols: ColDef[]
   fixedKeys: Set<string>
   headerColor: string
   headerColorSorted: string
   countLabel: string
   searchKeys: string[]
-  table: string | null
-  query?: string
+  table: string
+  filters?: Record<string, string>
   orderBy?: string
+  orderAsc?: boolean
 }> = {
   anuncios: {
     cols: AN_COLS,
     fixedKeys: new Set(['thumbnail', 'title']),
-    headerColor: '#0f766e',
-    headerColorSorted: '#0d9488',
-    countLabel: 'anúncios',
-    searchKeys: ['title', 'attributes_brand', 'seller_name'],
-    table: 'mercadolibre_items',
-    query: 'select=*&eq.status=active&order=sold_quantity.desc.nullslast',
+    headerColor: '#0f766e', headerColorSorted: '#0d9488',
+    countLabel: 'anúncios', searchKeys: ['title', 'attributes_brand', 'seller_name'],
+    table: 'mercadolibre_items', filters: { status: 'active' },
     orderBy: 'sold_quantity',
   },
   categorias: {
     cols: CAT_COLS,
     fixedKeys: new Set(['category_parent', 'category_tree']),
-    headerColor: '#7c3aed',
-    headerColorSorted: '#6d28d9',
-    countLabel: 'categorias',
-    searchKeys: ['category_name', 'category_tree', 'category_parent'],
-    table: 'mercadolibre_categories',
-    orderBy: 'category_tree',
+    headerColor: '#7c3aed', headerColorSorted: '#6d28d9',
+    countLabel: 'categorias', searchKeys: ['category_name', 'category_tree', 'category_parent'],
+    table: 'mercadolibre_categories', orderBy: 'category_tree', orderAsc: true,
   },
   marcas: {
     cols: BRAND_COLS,
     fixedKeys: new Set(['brand']),
-    headerColor: '#0369a1',
-    headerColorSorted: '#0284c7',
-    countLabel: 'marcas',
-    searchKeys: ['brand'],
-    table: 'mercadolibre_brands',
-    orderBy: 'results',
-  },
-  tendencias: {
-    cols: TREND_COLS,
-    fixedKeys: new Set(['trends_rank']),
-    headerColor: '#0f766e',
-    headerColorSorted: '#0d9488',
-    countLabel: 'tendências',
-    searchKeys: ['keyword'],
-    table: 'mercadolibre_trends',
-    orderBy: 'trends_rank',
+    headerColor: '#0369a1', headerColorSorted: '#0284c7',
+    countLabel: 'marcas', searchKeys: ['brand'],
+    table: 'mercadolibre_brands', orderBy: 'results',
   },
   vendedores: {
     cols: USER_COLS,
     fixedKeys: new Set(['nickname']),
-    headerColor: '#1d4ed8',
-    headerColorSorted: '#1e40af',
-    countLabel: 'vendedores',
-    searchKeys: ['nickname', 'address_city', 'address_state'],
-    table: 'mercadolibre_users',
-    orderBy: 'created_at',
+    headerColor: '#1d4ed8', headerColorSorted: '#1e40af',
+    countLabel: 'vendedores', searchKeys: ['nickname', 'address_city', 'address_state'],
+    table: 'mercadolibre_users', orderBy: 'created_at',
   },
-  top100: {
-    cols: TOP100_COLS,
-    fixedKeys: new Set(['ranking']),
-    headerColor: '#b45309',
-    headerColorSorted: '#92400e',
-    countLabel: 'itens',
-    searchKeys: ['title', 'seller_alias'],
-    table: 'mercadolibre_top100',
-    orderBy: 'ranking',
+  tendencias: {
+    cols: TREND_COLS,
+    fixedKeys: new Set(['trends_rank']),
+    headerColor: '#0f766e', headerColorSorted: '#0d9488',
+    countLabel: 'tendências', searchKeys: ['keyword'],
+    table: 'mercadolibre_trends', orderBy: 'trends_rank', orderAsc: true,
   },
-  destaques: {
-    cols: HL_COLS,
+  produtos: {
+    cols: PRODUTO_COLS,
     fixedKeys: new Set(['thumbnail', 'title']),
-    headerColor: '#7c3aed',
-    headerColorSorted: '#6d28d9',
-    countLabel: 'destaques',
-    searchKeys: ['title', 'attributes_brand'],
-    table: 'mercadolibre_items',
-    query: 'select=*&eq.status=active&order=visits.desc.nullslast',
-    orderBy: 'visits',
+    headerColor: '#0f766e', headerColorSorted: '#0d9488',
+    countLabel: 'produtos', searchKeys: ['title', 'brand'],
+    table: 'products', orderBy: 'title', orderAsc: true,
+  },
+  fornecedores: {
+    cols: FORNECEDOR_COLS,
+    fixedKeys: new Set(['name']),
+    headerColor: '#1d4ed8', headerColorSorted: '#1e40af',
+    countLabel: 'fornecedores', searchKeys: ['name'],
+    table: 'suppliers', orderBy: 'name', orderAsc: true,
   },
 }
 
-// Abas disponíveis sem canal
-const TABS_SEM_CANAL: TabId[] = ['categorias', 'marcas']
+type DataMap = Record<TabId, Record<string, unknown>[]>
+type LoadingMap = Record<TabId, boolean>
+type ColMap = Record<TabId, ColDef[]>
+
+const EMPTY_DATA: DataMap = {
+  anuncios: [], categorias: [], marcas: [], vendedores: [],
+  tendencias: [], produtos: [], fornecedores: [],
+}
+const EMPTY_LOADING: LoadingMap = {
+  anuncios: false, categorias: false, marcas: false, vendedores: false,
+  tendencias: false, produtos: false, fornecedores: false,
+}
 
 export default function AnalytrickApp() {
   const supabase = createClient()
@@ -103,102 +93,96 @@ export default function AnalytrickApp() {
   // ── State ────────────────────────────────────────────────
   const [channel, setChannel] = useState<Channel>('ml')
   const [activeTab, setActiveTab] = useState<TabId>('anuncios')
+  const [isDark, setIsDark] = useState(true)
   const [showChannelMenu, setShowChannelMenu] = useState(false)
-  const [data, setData] = useState<Record<TabId, Record<string, unknown>[]>>({
-    anuncios: [], categorias: [], marcas: [], tendencias: [],
-    vendedores: [], top100: [], destaques: [],
-  })
-  const [loading, setLoading] = useState<Record<TabId, boolean>>({
-    anuncios: false, categorias: false, marcas: false, tendencias: false,
-    vendedores: false, top100: false, destaques: false,
-  })
+  const [showConfigPanel, setShowConfigPanel] = useState(false)
+  const [data, setData] = useState<DataMap>(EMPTY_DATA)
+  const [loading, setLoading] = useState<LoadingMap>(EMPTY_LOADING)
   const [loaded, setLoaded] = useState<Set<TabId>>(new Set())
-  const [colDefs, setColDefs] = useState<Record<TabId, ColDef[]>>({
-    anuncios: AN_COLS,
-    categorias: CAT_COLS,
-    marcas: BRAND_COLS,
-    tendencias: TREND_COLS,
-    vendedores: USER_COLS,
-    top100: TOP100_COLS,
-    destaques: HL_COLS,
+  const [colDefs, setColDefs] = useState<ColMap>({
+    anuncios: AN_COLS, categorias: CAT_COLS, marcas: BRAND_COLS,
+    vendedores: USER_COLS, tendencias: TREND_COLS,
+    produtos: PRODUTO_COLS, fornecedores: FORNECEDOR_COLS,
   })
   const [user, setUser] = useState<{ email?: string; name?: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [imposto, setImposto] = useState(0)
+
   const channelMenuRef = useRef<HTMLDivElement>(null)
+  const configRef = useRef<HTMLDivElement>(null)
+
+  // ── Tabs disponíveis por canal ────────────────────────────
+  const tabs = channel === 'ml' ? TABS_ML : TABS_NONE
 
   // ── Auth ─────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setUser({
-          email: data.user.email,
-          name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0],
-        })
-      }
+      if (data.user) setUser({
+        email: data.user.email,
+        name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0],
+      })
     })
   }, [])
 
-  // ── Canal: ajusta tab ativa se não disponível ─────────────
+  // ── Ajusta tab ativa ao trocar canal ─────────────────────
   useEffect(() => {
-    if (channel === null && !TABS_SEM_CANAL.includes(activeTab)) {
-      setActiveTab('categorias')
-    }
+    const available = (channel === 'ml' ? TABS_ML : TABS_NONE).map(t => t.id)
+    if (!available.includes(activeTab)) setActiveTab(available[0] as TabId)
   }, [channel])
 
-  // ── Tabs disponíveis ──────────────────────────────────────
-  const availableTabs = TABS.filter(t => {
-    if (channel === null) return TABS_SEM_CANAL.includes(t.id)
-    return true
-  })
+  // ── Tema ─────────────────────────────────────────────────
+  const bg       = isDark ? '#111827' : '#f3f4f6'
+  const hbg      = isDark ? '#1f2937' : '#ffffff'
+  const brd      = isDark ? '#374151' : '#e5e7eb'
+  const txt      = isDark ? '#f9fafb' : '#111827'
+  const txtM     = isDark ? '#9ca3af' : '#374151'
+  const txtD     = isDark ? '#6b7280' : '#6b7280'
+  const h1bg     = isDark ? '#1a2035' : '#1e3a8a'
+  const rowBg    = isDark ? '#111827' : '#ffffff'
+  const rowAlt   = isDark ? '#1a2234' : '#f8fafc'
+  const hoverBg  = isDark ? '#1e3a5f' : '#dbeafe'
+  const inputBg  = isDark ? '#0f172a' : '#ffffff'
 
   // ── Carregar dados ────────────────────────────────────────
-  const loadTab = useCallback(async (tab: TabId) => {
-    if (loaded.has(tab)) return
-    const cfg = TAB_CONFIGS[tab]
-    if (!cfg.table) return
-
+  const loadTab = useCallback(async (tab: TabId, force = false) => {
+    if (loaded.has(tab) && !force) return
+    const cfg = TAB_CONFIG[tab]
     setLoading(l => ({ ...l, [tab]: true }))
     try {
       let allRows: Record<string, unknown>[] = []
       let offset = 0
-      const limit = 1000
-
       while (true) {
-        let q = supabase.from(cfg.table).select('*').range(offset, offset + limit - 1)
-        if (tab === 'anuncios' || tab === 'destaques') q = q.eq('status', 'active')
-        if (cfg.orderBy) {
-          q = q.order(cfg.orderBy, { ascending: tab === 'categorias' || tab === 'tendencias' || tab === 'top100' })
+        let q = supabase.from(cfg.table).select('*').range(offset, offset + 999)
+        if (cfg.filters) {
+          Object.entries(cfg.filters).forEach(([k, v]) => { q = q.eq(k, v) })
         }
+        if (cfg.orderBy) q = q.order(cfg.orderBy, { ascending: cfg.orderAsc ?? false })
         const { data: rows, error } = await q
         if (error) { console.error(error); break }
-        if (!rows || rows.length === 0) break
+        if (!rows?.length) break
         allRows = [...allRows, ...rows as Record<string, unknown>[]]
-        if (rows.length < limit) break
-        offset += limit
+        if (rows.length < 1000) break
+        offset += rows.length
       }
-
-      // receita calculada para anúncios e destaques
-      if (tab === 'anuncios' || tab === 'destaques') {
+      // receita calculada
+      if (tab === 'anuncios') {
         allRows = allRows.map(r => ({
           ...r,
           receita: ((r.price as number) || 0) * ((r.sold_quantity as number) || 0),
         }))
       }
-
       setData(d => ({ ...d, [tab]: allRows }))
       setLoaded(s => new Set([...s, tab]))
       showToast(`✓ ${allRows.length.toLocaleString('pt-BR')} ${cfg.countLabel} carregados`)
     } catch (e) {
       console.error(e)
+      showToast('Erro ao carregar dados')
     } finally {
       setLoading(l => ({ ...l, [tab]: false }))
     }
   }, [loaded, supabase])
 
-  // auto-load ao trocar de tab
-  useEffect(() => {
-    loadTab(activeTab)
-  }, [activeTab, loadTab])
+  useEffect(() => { loadTab(activeTab) }, [activeTab])
 
   // ── Toast ─────────────────────────────────────────────────
   function showToast(msg: string) {
@@ -212,53 +196,58 @@ export default function AnalytrickApp() {
     window.location.href = '/auth/login'
   }
 
-  // ── Canal atual ───────────────────────────────────────────
-  const currentChannel = CHANNELS.find(c => c.id === channel) || CHANNELS[0]
-
-  // ── Close channel menu on outside click ───────────────────
+  // ── Close menus on outside click ──────────────────────────
   useEffect(() => {
-    if (!showChannelMenu) return
     function handler(e: MouseEvent) {
-      if (channelMenuRef.current && !channelMenuRef.current.contains(e.target as Node)) {
+      if (channelMenuRef.current && !channelMenuRef.current.contains(e.target as Node))
         setShowChannelMenu(false)
-      }
+      if (configRef.current && !configRef.current.contains(e.target as Node))
+        setShowConfigPanel(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [showChannelMenu])
+  }, [])
 
-  const cfg = TAB_CONFIGS[activeTab]
+  const currentChannel = CHANNELS.find(c => c.id === channel) || CHANNELS[0]
+
+  const inputStyle: React.CSSProperties = {
+    background: inputBg, border: `1px solid ${brd}`, borderRadius: 6,
+    color: txt, fontSize: 11, padding: '4px 10px',
+    fontFamily: 'inherit', outline: 'none',
+  }
 
   return (
     <div style={{
-      position: 'fixed', inset: 0,
-      background: '#111827',
+      position: 'fixed', inset: 0, background: bg,
       display: 'flex', flexDirection: 'column',
       fontFamily: "'Inter', system-ui, sans-serif",
-      color: '#f9fafb', overflow: 'hidden',
+      color: txt, overflow: 'hidden',
+      transition: 'background 0.2s, color 0.2s',
     }}>
 
-      {/* ══ H1 — Barra principal ══════════════════════════ */}
+      {/* ══ H1 ════════════════════════════════════════════ */}
       <div style={{
         display: 'flex', alignItems: 'center', height: 48, flexShrink: 0,
-        background: '#1a2035',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        padding: '0 10px', gap: 0,
+        background: h1bg, borderBottom: '1px solid rgba(255,255,255,0.08)',
+        padding: '0 10px', gap: 0, position: 'relative',
       }}>
 
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 16, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginRight: 10 }}>
           <div style={{
             background: '#ffe600', borderRadius: 6, width: 28, height: 28,
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
           }}>📊</div>
-          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.8px', color: '#ffe600', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.8px', color: '#ffe600' }}>
             ANALYTRICK
           </span>
         </div>
 
-        {/* ── Canal Dropdown ── */}
-        <div style={{ position: 'relative', marginRight: 12, flexShrink: 0 }} ref={channelMenuRef}>
+        {/* Separador */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.15)', margin: '0 10px', flexShrink: 0 }} />
+
+        {/* Canal Dropdown */}
+        <div style={{ position: 'relative', flexShrink: 0 }} ref={channelMenuRef}>
           <button
             onClick={() => setShowChannelMenu(v => !v)}
             style={{
@@ -266,54 +255,51 @@ export default function AnalytrickApp() {
               background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: 8, padding: '4px 12px', cursor: 'pointer',
               color: currentChannel.color, fontFamily: 'inherit',
-              fontSize: 12, fontWeight: 700, letterSpacing: '.3px',
-              transition: 'background 0.15s',
+              fontSize: 12, fontWeight: 700,
             }}
           >
-            <span style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: currentChannel.color, flexShrink: 0,
-            }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: currentChannel.color, flexShrink: 0 }} />
             {currentChannel.label}
-            <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 2 }}>▾</span>
+            <span style={{ fontSize: 9, opacity: 0.7 }}>▾</span>
           </button>
 
           {showChannelMenu && (
             <div style={{
-              position: 'absolute', top: '100%', left: 0, marginTop: 4,
-              background: '#1f2937', border: '1px solid #374151',
+              position: 'absolute', top: '100%', left: 0, marginTop: 6,
+              background: hbg, border: `1px solid ${brd}`,
               borderRadius: 10, minWidth: 200,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-              zIndex: 9999, overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 9999,
             }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid #374151', fontSize: 10, color: '#6b7280', fontWeight: 700, letterSpacing: '.5px' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${brd}`, fontSize: 10, color: txtD, fontWeight: 700, letterSpacing: '.5px' }}>
                 CANAL DE DADOS
               </div>
               {CHANNELS.map(ch => (
                 <button
                   key={ch.id ?? 'none'}
-                  onClick={() => {
-                    setChannel(ch.id)
-                    setShowChannelMenu(false)
-                    // reset loaded para forçar reload no novo canal (futuramente)
-                  }}
+                  onClick={() => { setChannel(ch.id); setShowChannelMenu(false) }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    width: '100%', background: channel === ch.id ? '#1e3a8a' : 'none',
-                    border: 'none', borderBottom: '1px solid #1e2535',
-                    padding: '10px 14px', cursor: 'pointer', color: '#f9fafb',
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: channel === ch.id ? 700 : 400,
-                    textAlign: 'left', transition: 'background 0.1s',
+                    width: '100%',
+                    background: channel === ch.id ? '#1e3a8a' : 'none',
+                    border: 'none', borderBottom: `1px solid ${brd}`,
+                    padding: '10px 14px', cursor: 'pointer', color: txt,
+                    fontFamily: 'inherit', fontSize: 12,
+                    fontWeight: channel === ch.id ? 700 : 400, textAlign: 'left',
                   }}
-                  onMouseEnter={e => { if (channel !== ch.id) e.currentTarget.style.background = '#273549' }}
+                  onMouseEnter={e => { if (channel !== ch.id) e.currentTarget.style.background = '#1e3a5f' }}
                   onMouseLeave={e => { if (channel !== ch.id) e.currentTarget.style.background = 'none' }}
                 >
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: ch.color, flexShrink: 0 }} />
                   <div>
                     <div>{ch.label}</div>
                     {ch.id === null && (
-                      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
-                        Categorias, Marcas, Produtos
+                      <div style={{ fontSize: 10, color: txtD, marginTop: 2 }}>
+                        Produtos, Categorias, Marcas...
+                      </div>
+                    )}
+                    {ch.id === 'ml' && (
+                      <div style={{ fontSize: 10, color: txtD, marginTop: 2 }}>
+                        Anúncios, Categorias, Marcas...
                       </div>
                     )}
                   </div>
@@ -324,18 +310,27 @@ export default function AnalytrickApp() {
           )}
         </div>
 
-        {/* ── Tabs de módulo ── */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', gap: 0, overflow: 'hidden' }}>
-          {availableTabs.map(tab => (
+        {/* Separador */}
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.15)', margin: '0 10px', flexShrink: 0 }} />
+
+        {/* ── Tabs (flex:1, alinhadas à direita da logo/canal) ── */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', height: '100%', overflow: 'hidden' }}>
+          {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="atk-tab"
               style={{
+                display: 'flex', alignItems: 'center', padding: '0 16px',
+                height: '100%', fontSize: 12, fontWeight: activeTab === tab.id ? 700 : 600,
                 color: activeTab === tab.id ? '#ffe600' : 'rgba(255,255,255,0.55)',
+                background: 'none', border: 'none',
                 borderBottom: activeTab === tab.id ? '3px solid #ffe600' : '3px solid transparent',
-                fontWeight: activeTab === tab.id ? 700 : 600,
+                borderTop: '3px solid transparent',
+                cursor: 'pointer', fontFamily: 'inherit',
+                whiteSpace: 'nowrap', transition: 'color 0.15s',
               }}
+              onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = 'rgba(255,255,255,0.85)' }}
+              onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
             >
               {tab.label}
             </button>
@@ -344,50 +339,141 @@ export default function AnalytrickApp() {
 
         {/* ── Ações direita ── */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+
+          {/* Tema */}
           <button
-            onClick={() => loadTab(activeTab)}
-            className="atk-btn"
-            title="Recarregar dados"
-            style={{ fontSize: 11 }}
+            onClick={() => setIsDark(v => !v)}
+            title={isDark ? 'Modo claro' : 'Modo escuro'}
+            style={{
+              height: 30, width: 30, borderRadius: 5, fontSize: 14,
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)',
+              color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}
           >
-            ↻ Atualizar
+            {isDark ? '☀' : '🌙'}
           </button>
-          <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.12)', margin: '0 4px' }} />
-          {user && (
-            <span style={{ fontSize: 10, color: '#6b7280', marginRight: 4 }}>
-              {user.name || user.email}
-            </span>
-          )}
-          <button onClick={handleLogout} className="atk-btn" style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}>
-            Sair
-          </button>
+
+          {/* Configurações */}
+          <div style={{ position: 'relative' }} ref={configRef}>
+            <button
+              onClick={() => setShowConfigPanel(v => !v)}
+              title="Configurações"
+              style={{
+                height: 30, padding: '0 10px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+                background: showConfigPanel ? '#1e3a8a' : 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                color: 'rgba(255,255,255,0.8)', cursor: 'pointer',
+                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              ⚙ {user?.name || user?.email || ''}
+            </button>
+
+            {showConfigPanel && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                background: hbg, border: `1px solid ${brd}`, borderRadius: 12,
+                width: 280, boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+                zIndex: 9999, overflow: 'hidden',
+              }}>
+                {/* Usuário */}
+                <div style={{ padding: '12px 16px', borderBottom: `1px solid ${brd}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%', background: '#1e3a8a',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
+                  }}>👤</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: txt, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name || 'Usuário'}
+                    </div>
+                    <div style={{ fontSize: 10, color: txtM, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.email || ''}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#4ade80', marginTop: 2 }}>● Acesso ativo</div>
+                  </div>
+                </div>
+
+                {/* Financeiro */}
+                <div style={{ padding: 16, borderBottom: `1px solid ${brd}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: txt, marginBottom: 4 }}>FINANCEIRO</div>
+                  <div style={{ fontSize: 10, color: txtD, marginBottom: 8 }}>% Imposto aplicado sobre o preço</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number" min={0} max={100} step={0.1}
+                      value={imposto}
+                      onChange={e => setImposto(parseFloat(e.target.value) || 0)}
+                      style={{ ...inputStyle, width: 80, textAlign: 'right' }}
+                    />
+                    <span style={{ fontSize: 11, color: txtM }}>%</span>
+                  </div>
+                </div>
+
+                {/* Tema */}
+                <div style={{ padding: 16, borderBottom: `1px solid ${brd}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: txt, marginBottom: 8 }}>APARÊNCIA</div>
+                  <button
+                    onClick={() => setIsDark(v => !v)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'none', border: `1px solid ${brd}`, borderRadius: 8,
+                      padding: '7px 12px', cursor: 'pointer', color: txt,
+                      fontFamily: 'inherit', fontSize: 11, width: '100%',
+                    }}
+                  >
+                    {isDark ? '☀ Modo claro' : '🌙 Modo escuro'}
+                  </button>
+                </div>
+
+                {/* Sair */}
+                <div style={{ padding: 12 }}>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      width: '100%', background: 'rgba(239,68,68,0.1)',
+                      border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8,
+                      color: '#ef4444', padding: '8px 12px', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                    }}
+                  >
+                    Sair da conta
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ══ Conteúdo ══════════════════════════════════════ */}
-      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {availableTabs.map(tab => (
+      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        {tabs.map(tab => (
           <div
             key={tab.id}
             style={{
               display: activeTab === tab.id ? 'flex' : 'none',
-              flexDirection: 'column',
-              flex: 1,
-              overflow: 'hidden',
-              minHeight: 0,
+              flexDirection: 'column', height: '100%',
             }}
           >
             <DataTable
               rows={data[tab.id]}
               colDefs={colDefs[tab.id]}
               onColDefsChange={cols => setColDefs(c => ({ ...c, [tab.id]: cols }))}
-              headerColor={TAB_CONFIGS[tab.id].headerColor}
-              headerColorSorted={TAB_CONFIGS[tab.id].headerColorSorted}
-              fixedKeys={TAB_CONFIGS[tab.id].fixedKeys}
-              countLabel={TAB_CONFIGS[tab.id].countLabel}
+              headerColor={TAB_CONFIG[tab.id].headerColor}
+              headerColorSorted={TAB_CONFIG[tab.id].headerColorSorted}
+              fixedKeys={TAB_CONFIG[tab.id].fixedKeys}
+              countLabel={TAB_CONFIG[tab.id].countLabel}
               tableId={`atk-${tab.id}`}
               loading={loading[tab.id]}
-              searchKeys={TAB_CONFIGS[tab.id].searchKeys}
+              searchKeys={TAB_CONFIG[tab.id].searchKeys}
+              isDark={isDark}
+              rowBg={rowBg}
+              rowAlt={rowAlt}
+              hoverBg={hoverBg}
+              onReload={() => {
+                setLoaded(s => { const n = new Set(s); n.delete(tab.id); return n })
+                loadTab(tab.id, true)
+              }}
             />
           </div>
         ))}
@@ -396,18 +482,35 @@ export default function AnalytrickApp() {
       {/* ══ Footer ════════════════════════════════════════ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '4px 12px', height: 26, flexShrink: 0,
-        background: '#0f172a', borderTop: '1px solid #1e2535',
-        fontSize: 9, color: '#4b5563',
+        padding: '0 12px', height: 24, flexShrink: 0,
+        background: isDark ? '#0f172a' : '#e5e7eb',
+        borderTop: `1px solid ${brd}`,
+        fontSize: 9, color: txtD,
       }}>
         <span>ANALYTRICK · {currentChannel.label} · 1 clique = ordenar · Ctrl+clique = filtrar</span>
-        <span>💡 Use Ctrl+clique no cabeçalho para filtrar colunas</span>
+        <span>💡 Ctrl+clique no cabeçalho para filtrar colunas</span>
       </div>
 
       {/* Toast */}
       {toast && (
-        <div className="atk-toast">{toast}</div>
+        <div style={{
+          position: 'fixed', bottom: 20, right: 20,
+          background: hbg, border: `1px solid ${brd}`,
+          color: txt, padding: '10px 16px', borderRadius: 8,
+          fontSize: 12, fontWeight: 600, zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          animation: 'fadeInUp 0.2s ease',
+        }}>
+          {toast}
+        </div>
       )}
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

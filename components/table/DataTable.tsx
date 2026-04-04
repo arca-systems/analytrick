@@ -8,14 +8,19 @@ interface DataTableProps {
   rows: Record<string, unknown>[]
   colDefs: ColDef[]
   onColDefsChange: (cols: ColDef[]) => void
-  headerColor?: string        // ex: '#0f766e'
-  headerColorSorted?: string  // ex: '#0d9488'
+  headerColor?: string
+  headerColorSorted?: string
   fixedKeys?: Set<string>
   pageSize?: number
   countLabel?: string
   tableId?: string
   loading?: boolean
-  searchKeys?: string[]       // colunas para busca global
+  searchKeys?: string[]
+  isDark?: boolean
+  rowBg?: string
+  rowAlt?: string
+  hoverBg?: string
+  onReload?: () => void
 }
 
 type SortDir = 1 | -1
@@ -38,6 +43,11 @@ export function DataTable({
   tableId = 'atk-tbl',
   loading = false,
   searchKeys = [],
+  isDark = true,
+  rowBg = '#111827',
+  rowAlt = '#1a2234',
+  hoverBg = '#1e3a5f',
+  onReload,
 }: DataTableProps) {
   const [sortCol, setSortCol] = useState<string>('')
   const [sortDir, setSortDir] = useState<SortDir>(1)
@@ -181,7 +191,8 @@ export function DataTable({
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px',
         height: 38, flexShrink: 0,
-        background: '#111827', borderBottom: '2px solid #2d3748',
+        background: isDark ? '#111827' : '#f8fafc',
+        borderBottom: `2px solid ${isDark ? '#2d3748' : '#e5e7eb'}`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           {searchKeys.length > 0 && (
@@ -209,6 +220,9 @@ export function DataTable({
           <button className="atk-btn" onClick={() => setShowColManager(v => !v)}>⊞ Colunas</button>
           <div style={{ width: 1, height: 20, background: '#374151', margin: '0 2px' }} />
           <button className="atk-btn" onClick={downloadCSV} title="Baixar CSV">⬇ CSV</button>
+          {onReload && (
+            <button className="atk-btn" onClick={onReload} title="Recarregar dados">↻</button>
+          )}
         </div>
         <span style={{ fontSize: 11, color: '#4b5563' }}>
           1 clique = ordenar · Ctrl+clique = filtrar
@@ -452,9 +466,9 @@ export function DataTable({
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        #${tableId} tbody tr:nth-child(odd)  td { background: #111827; }
-        #${tableId} tbody tr:nth-child(even) td { background: #1a2234; }
-        #${tableId} tbody tr:hover           td { background: #1e3a5f !important; }
+        #${tableId} tbody tr:nth-child(odd)  td { background: ${rowBg}; }
+        #${tableId} tbody tr:nth-child(even) td { background: ${rowAlt}; }
+        #${tableId} tbody tr:hover           td { background: ${hoverBg} !important; }
         #${tableId} thead th:first-child { border-radius: 0; }
       `}</style>
     </div>
