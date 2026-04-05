@@ -197,8 +197,10 @@ export default function AnalytrickApp() {
       setData(d => ({...d,[tab]:rows}))
       setLoaded(s => new Set([...s, key]))
       showToast(`✓ ${rows.length.toLocaleString('pt-BR')} ${COUNT_LABEL[tab]} carregados`)
-    } catch(e) {
-      console.error(e); showToast('Erro ao carregar dados')
+    } catch(e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+      console.error('loadTab error:', msg)
+      showToast('Erro ao carregar dados: ' + msg)
     } finally {
       setLoading(l => ({...l,[tab]:false}))
     }
