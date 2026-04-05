@@ -86,8 +86,6 @@ export const AN_COLS: ColDef[] = [
   { key:'inventory_id',           label:'ID INVENTÁRIO',                   w:'120px', sortable:true,  visible:false },
   { key:'brand_id',               label:'ID MARCA',                        w:'110px', sortable:true,  visible:false },
   { key:'listing_type_id',        label:'ID TIPO DE ANUNCIO',              w:'130px', sortable:true,  visible:false },
-  { key:'gold_special_fee',       label:'TAXA CLÁSSICO',                   w:'110px', sortable:true,  visible:false },
-  { key:'gold_pro_fee',           label:'TAXA PREMIUM',                    w:'110px', sortable:true,  visible:false },
 ]
 
 // ── Categorias ───────────────────────────────────────────────
