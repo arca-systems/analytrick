@@ -41,6 +41,28 @@ export const AN_COLS: ColDef[] = [
   { key: 'item_updated_at',        label: 'ATUALIZADO EM',           w: '110px', sortable: true,  visible: false },
   { key: 'permalink',              label: 'URL ANUNCIO',             w: '200px', sortable: false, visible: false },
   { key: 'item_id',                label: 'ID ITEM',                 w: '130px', sortable: true,  visible: false },
+  // Colunas adicionais da extensão
+  { key: 'tags',                   label: 'TAGS',                    w: '120px', sortable: true,  visible: false },
+  { key: 'item_tags',              label: 'TAGS ITEM',               w: '160px', sortable: false, visible: false },
+  { key: 'ads_type',               label: 'TIPO DE ADS',             w: '90px',  sortable: true,  visible: false },
+  { key: 'listing',                label: 'ANUNCIO',                 w: '130px', sortable: true,  visible: false },
+  { key: 'rate',                   label: 'AVALIAÇÕES',              w: '80px',  sortable: true,  visible: false },
+  { key: 'rate_stars',             label: 'NOTA',                    w: '65px',  sortable: true,  visible: false },
+  { key: 'installments',           label: 'PARCELAMENTO',            w: '140px', sortable: false, visible: false },
+  { key: 'origin',                 label: 'ORIGEM',                  w: '110px', sortable: true,  visible: false },
+  { key: 'country',                label: 'PAÍS',                    w: '60px',  sortable: true,  visible: false },
+  { key: 'address_state',          label: 'ESTADO',                  w: '80px',  sortable: true,  visible: false },
+  { key: 'address_city',           label: 'CIDADE',                  w: '100px', sortable: true,  visible: false },
+  { key: 'official_store_id',      label: 'ID LOJA OFICIAL',         w: '130px', sortable: true,  visible: false },
+  { key: 'domain_id',              label: 'ID DOMÍNIO',              w: '120px', sortable: true,  visible: false },
+  { key: 'inventory_id',           label: 'ID INVENTÁRIO',           w: '120px', sortable: true,  visible: false },
+  { key: 'brand_id',               label: 'ID MARCA',                w: '110px', sortable: true,  visible: false },
+  { key: 'catalog_product_id',     label: 'ID PRODUTO CATÁLOGO',     w: '130px', sortable: true,  visible: false },
+  { key: 'user_product_id',        label: 'ID PRODUTO USUÁRIO',      w: '130px', sortable: true,  visible: false },
+  { key: 'item_updated_days',      label: 'ITEM DIAS',               w: '80px',  sortable: true,  visible: false },
+  { key: 'vendas_dia',             label: 'VENDAS / DIA',            w: '90px',  sortable: true,  visible: false },
+  { key: 'receita_item',           label: 'RECEITA ITEM',            w: '120px', sortable: true,  visible: false },
+  { key: 'conversao',              label: 'CONVERSÃO',               w: '80px',  sortable: true,  visible: false },
 ]
 
 // ── Categorias ───────────────────────────────────────────────

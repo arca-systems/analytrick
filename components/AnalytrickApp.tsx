@@ -168,10 +168,25 @@ export default function AnalytrickApp() {
     fornecedores:new Set(['name']),
   }
 
-  // ── Carregar dados ────────────────────────────────────────
+  // ── Carregar dados com cache sessionStorage ──────────────
   const loadTab = useCallback(async (tab: TabId, force = false) => {
     const key = `${chKey}:${tab}`
     if (loaded.has(key) && !force) return
+
+    // Tenta cache da sessão
+    if (!force) {
+      try {
+        const cached = sessionStorage.getItem(`atk_cache_${key}`)
+        if (cached) {
+          const rows = JSON.parse(cached) as Record<string,unknown>[]
+          setData(d => ({...d,[tab]:rows}))
+          setLoaded(s => new Set([...s, key]))
+          showToast(`✓ ${rows.length.toLocaleString('pt-BR')} ${COUNT_LABEL[tab]} (cache)`)
+          return
+        }
+      } catch {}
+    }
+
     const table = getTable(tab, currentCh)
     if (!table) { setData(d => ({...d,[tab]:[]})); return }
 
@@ -180,15 +195,17 @@ export default function AnalytrickApp() {
       let rows: Record<string,unknown>[] = []
       let offset = 0
       const {col,asc} = getOrderBy(tab)
+      const BATCH = 1000
       while (true) {
-        let q = supabase.from(table).select('*').range(offset, offset+999)
+        let q = supabase.from(table).select('*').range(offset, offset + BATCH - 1)
         if (tab==='anuncios') q = q.eq('status','active')
         q = q.order(col, {ascending:asc})
         const {data:batch, error} = await q
         if (error) { console.error(error); break }
         if (!batch?.length) break
         rows = [...rows, ...batch as Record<string,unknown>[]]
-        if (batch.length < 1000) break
+        // Continua enquanto vier batches completos (não chegou no fim)
+        if (batch.length < BATCH) break
         offset += batch.length
       }
       if (tab==='anuncios') {
@@ -196,11 +213,13 @@ export default function AnalytrickApp() {
       }
       setData(d => ({...d,[tab]:rows}))
       setLoaded(s => new Set([...s, key]))
+      // Salva cache na sessão (máx ~4MB por item)
+      try { sessionStorage.setItem(`atk_cache_${key}`, JSON.stringify(rows)) } catch {}
       showToast(`✓ ${rows.length.toLocaleString('pt-BR')} ${COUNT_LABEL[tab]} carregados`)
     } catch(e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido'
       console.error('loadTab error:', msg)
-      showToast('Erro ao carregar dados: ' + msg)
+      showToast('Erro ao carregar dados')
     } finally {
       setLoading(l => ({...l,[tab]:false}))
     }

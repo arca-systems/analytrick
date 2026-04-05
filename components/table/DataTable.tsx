@@ -58,7 +58,7 @@ const PV_VIEWS = [
     } },
 ]
 
-function fmtR(v:number) { if (!v && v!==0) return '—'; return v.toLocaleString('pt-BR', {style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}) }
+function fmtR(v:number) { if (!v && v!==0) return '—'; const abs=Math.abs(v); const fmt=abs.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); return (v<0?'-':'')+'R$\u00a0'+fmt }
 function fmtN(v:number) { return v!=null ? v.toLocaleString('pt-BR') : '—' }
 
 function buildPivotData(rows:Record<string,unknown>[], pvView:string) {
@@ -272,38 +272,39 @@ export function DataTable({
 
       {/* ══ H2 toolbar ══════════════════════════════════ */}
       <div style={{display:'flex',alignItems:'center',height:38,flexShrink:0,background:h2bg,borderBottom:`2px solid ${brd2}`,padding:'0 10px',gap:6}}>
+        {/* Esquerda: busca + count */}
         <div style={{display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0,overflow:'hidden'}}>
-          {view==='dinamica' ? (
-            <>
-              <select value={pvView} onChange={e=>setPvView(e.target.value)}
-                style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600}}>
-                {PV_VIEWS.map(v=>(
-                  <option key={v.id} value={v.id}>{v.lbl1} / {v.lbl2}</option>
-                ))}
-              </select>
-              <span style={{fontSize:11,color:txtVD}}>{pivotData.length} grupos · {rows.length.toLocaleString('pt-BR')} itens</span>
-            </>
-          ) : (
-            <>
-              {searchKeys.length>0 && (
-                <input type="text" placeholder="🔍 Buscar..."
-                  value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
-                  style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
-                />
-              )}
-              <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
-                {sorted.length.toLocaleString('pt-BR')} {countLabel}
-                {hasFilters && <span style={{color:'#f59e0b',marginLeft:6}}>● filtrado</span>}
-              </span>
-            </>
+          {view!=='dinamica' && searchKeys.length>0 && (
+            <input type="text" placeholder="🔍 Buscar..."
+              value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
+              style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
+            />
           )}
+          <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
+            {view==='dinamica'
+              ? `${pivotData.length} grupos · ${rows.length.toLocaleString('pt-BR')} itens`
+              : `${sorted.length.toLocaleString('pt-BR')} ${countLabel}${hasFilters?' ● filtrado':''}`
+            }
+          </span>
         </div>
+        {/* Direita: botões */}
         <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
-          <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">✕ Filtros</button>
-          <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">⊞ Colunas</button>
+          {view!=='dinamica' && <>
+            <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">✕ Filtros</button>
+            <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">⊞ Colunas</button>
+          </>}
+          {/* Seletor de agrupamento — aparece ao lado de Analítica quando Dinâmica está ativa */}
+          {view==='dinamica' && (
+            <select value={pvView} onChange={e=>setPvView(e.target.value)}
+              style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600,marginRight:4}}>
+              {PV_VIEWS.map(v=>(
+                <option key={v.id} value={v.id}>{v.lbl1} / {v.lbl2}</option>
+              ))}
+            </select>
+          )}
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
           <button style={btnStyle(view==='analitica')} onClick={()=>setView('analitica')}>≡ Analítica</button>
-          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Dinâmica':'Dinâmica disponível apenas em Anúncios'}>⊞ Dinâmica</button>
+          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Dinâmica':'Disponível apenas em Anúncios'}>⊞ Dinâmica</button>
           <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>📈 Gráficos</button>
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
           <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">⬇↑ Dados</button>
