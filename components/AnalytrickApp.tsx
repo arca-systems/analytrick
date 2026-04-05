@@ -112,7 +112,7 @@ export default function AnalytrickApp() {
   function getOrderBy(tab: TabId) {
     const m: Record<TabId, {col:string;asc:boolean}> = {
       anuncios:    {col:'sold_quantity', asc:false},
-      tendencias:  {col:'trends_rank',   asc:true },
+      tendencias:  {col: channel===null ? 'id' : 'trends_rank', asc:true },
       categorias:  {col: channel===null ? 'category' : 'category_tree', asc:true },
       marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
       vendedores:  {col:'created_at',    asc:false},
@@ -127,12 +127,12 @@ export default function AnalytrickApp() {
     produtos:'produtos',fornecedores:'fornecedores',
   }
   const SEARCH_KEYS: Record<TabId,string[]> = {
-    anuncios:   ['title','attributes_brand','seller_name'],
-    categorias: ['category_name','category_tree','category_parent'],
-    marcas:     ['brand'],
-    vendedores: ['nickname','address_city','address_state'],
-    tendencias: ['keyword'],
-    produtos:   ['title','brand'],
+    anuncios:    ['title','attributes_brand','seller_name'],
+    categorias:  channel === null ? ['category'] : ['category_name','category_tree','category_parent'],
+    marcas:      ['brand'],
+    vendedores:  ['nickname','address_city','address_state'],
+    tendencias:  channel === null ? ['keyword'] : ['keyword'],
+    produtos:    ['brand','model','category'],
     fornecedores:['name','email'],
   }
   const CHANNEL_HEADER: Record<string,{a:string;v:string}> = {
@@ -160,11 +160,11 @@ export default function AnalytrickApp() {
   }
   const FIXED_KEYS: Record<TabId,Set<string>> = {
     anuncios:    new Set(['thumbnail','title']),
-    categorias:  new Set(['category_parent','category_tree']),
+    categorias:  channel === null ? new Set(['category']) : new Set(['category_parent','category_tree']),
     marcas:      new Set(['brand']),
     vendedores:  new Set(['nickname']),
     tendencias:  new Set(['trends_rank']),
-    produtos:    new Set(['thumbnail','title']),
+    produtos:    new Set(['brand']),
     fornecedores:new Set(['name']),
   }
 
