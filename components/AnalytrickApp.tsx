@@ -25,11 +25,15 @@ type DataMap = Record<TabId, Record<string, unknown>[]>
 type LoadingMap = Record<TabId, boolean>
 type ColMap = Record<TabId, ColDef[]>
 
-const ALL_TAB_IDS: TabId[] = ['anuncios','categorias','marcas','vendedores','tendencias','produtos','fornecedores']
-
-const EMPTY_DATA    = () => Object.fromEntries(ALL_TAB_IDS.map(t => [t, []])) as DataMap
-const EMPTY_LOADING = () => Object.fromEntries(ALL_TAB_IDS.map(t => [t, false])) as LoadingMap
-const INIT_COLS     = (): ColMap => ({
+const EMPTY_DATA = (): DataMap => ({
+  anuncios: [], categorias: [], marcas: [], vendedores: [],
+  tendencias: [], produtos: [], fornecedores: [],
+})
+const EMPTY_LOADING = (): LoadingMap => ({
+  anuncios: false, categorias: false, marcas: false, vendedores: false,
+  tendencias: false, produtos: false, fornecedores: false,
+})
+const INIT_COLS = (): ColMap => ({
   anuncios: [...AN_COLS], categorias: [...CAT_COLS], marcas: [...BRAND_COLS],
   vendedores: [...USER_COLS], tendencias: [...TREND_COLS],
   produtos: [...PRODUTO_COLS], fornecedores: [...FORNECEDOR_COLS],
