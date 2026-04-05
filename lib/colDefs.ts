@@ -129,14 +129,20 @@ export const BRAND_COLS: ColDef[] = [
   { key:'created_at',      label:'CRIADO EM',  w:'110px', sortable:true,  visible:false },
 ]
 
-// ── Tendências ───────────────────────────────────────────────
+// ── Tendências (ML) — tabela: mercadolibre_trends ───────────
 export const TREND_COLS: ColDef[] = [
-  { key:'trends_rank', label:'RANK',         w:'60px',  sortable:true,  visible:true,  fixed:true },
+  { key:'trends_rank', label:'RANK',          w:'60px',  sortable:true,  visible:true,  fixed:true },
   { key:'keyword',     label:'PALAVRA-CHAVE', w:'260px', sortable:true,  visible:true  },
-  { key:'trends_type', label:'TIPO',         w:'120px', sortable:true,  visible:true  },
-  { key:'category_id', label:'CATEGORIA',    w:'180px', sortable:true,  visible:true  },
-  { key:'results',     label:'RESULTADOS',   w:'110px', sortable:true,  visible:true  },
-  { key:'created_at',  label:'ATUALIZADO',   w:'100px', sortable:true,  visible:true  },
+  { key:'trends_type', label:'TIPO',          w:'120px', sortable:true,  visible:true  },
+  { key:'category_id', label:'CATEGORIA',     w:'180px', sortable:true,  visible:true  },
+  { key:'results',     label:'RESULTADOS',    w:'110px', sortable:true,  visible:true  },
+  { key:'created_at',  label:'ATUALIZADO',    w:'100px', sortable:true,  visible:true  },
+]
+
+// ── Tendências (Home) — tabela: trends ───────────────────────
+export const HOME_TREND_COLS: ColDef[] = [
+  { key:'id',         label:'ID',         w:'80px',  sortable:true, visible:true, fixed:true },
+  { key:'created_at', label:'CRIADO EM',  w:'160px', sortable:true, visible:true },
 ]
 
 // ── Vendedores ───────────────────────────────────────────────

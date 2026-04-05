@@ -8,7 +8,7 @@ import {
   TabId, Channel, ChannelOption,
 } from '@/types'
 import {
-  AN_COLS, CAT_COLS, HOME_CAT_COLS, BRAND_COLS, TREND_COLS, USER_COLS,
+  AN_COLS, CAT_COLS, HOME_CAT_COLS, BRAND_COLS, TREND_COLS, HOME_TREND_COLS, USER_COLS,
   PRODUTO_COLS, FORNECEDOR_COLS,
 } from '@/lib/colDefs'
 
@@ -25,8 +25,8 @@ const EMPTY_LOADING = (): LoadingMap => ({
   tendencias: false, produtos: false, fornecedores: false,
 })
 const INIT_COLS = (): ColMap => ({
-  anuncios: [...AN_COLS], categorias: [...CAT_COLS], marcas: [...BRAND_COLS],
-  vendedores: [...USER_COLS], tendencias: [...TREND_COLS],
+  anuncios: [...AN_COLS], categorias: [...HOME_CAT_COLS], marcas: [...BRAND_COLS],
+  vendedores: [...USER_COLS], tendencias: [...HOME_TREND_COLS],
   produtos: [...PRODUTO_COLS], fornecedores: [...FORNECEDOR_COLS],
 })
 
@@ -116,7 +116,7 @@ export default function AnalytrickApp() {
       categorias:  {col: channel===null ? 'category' : 'category_tree', asc:true },
       marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
       vendedores:  {col:'created_at',    asc:false},
-      produtos:    {col:'brand',         asc:true },
+      produtos:    {col:'created_at',     asc:false},
       fornecedores:{col:'name',          asc:true },
     }
     return m[tab]
