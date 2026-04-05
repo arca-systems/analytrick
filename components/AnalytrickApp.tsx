@@ -485,7 +485,7 @@ export default function AnalytrickApp() {
                 isDark={isDark}
                 rowBg={rowBg} rowAlt={rowAlt} hoverBg={hoverBg}
                 h2bg={h2bg} brd={brd} brd2={brd2}
-                txt={txt} txtD={txtD} txtVD={txtVD}
+                txt={txt} txtM={txtM} txtD={txtD} txtVD={txtVD}
                 isAdmin={isAdmin}
               />
             </div>

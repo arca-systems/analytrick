@@ -19,7 +19,7 @@ interface DataTableProps {
   isDark?: boolean
   rowBg?: string; rowAlt?: string; hoverBg?: string
   h2bg?: string; brd?: string; brd2?: string
-  txt?: string; txtD?: string; txtVD?: string
+  txt?: string; txtM?: string; txtD?: string; txtVD?: string
   isAdmin?: boolean
 }
 
@@ -103,7 +103,7 @@ export function DataTable({
   loading=false, searchKeys=[], isDark=true,
   rowBg='#111827', rowAlt='#1a2234', hoverBg='#1e3a5f',
   h2bg='#111827', brd='#374151', brd2='#2d3748',
-  txt='#f9fafb', txtD='#6b7280', txtVD='#4b5563',
+  txt='#f9fafb', txtM='#9ca3af', txtD='#6b7280', txtVD='#4b5563',
   isAdmin=false,
 }: DataTableProps) {
   const [sortCol, setSortCol]       = useState('')
