@@ -522,18 +522,21 @@ export function DataTable({
         )}
       </div>
 
-      {/* ══ Pager ═══════════════════════════════════════ */}
-      {view==='analitica' && totalPages>1 && (
-        <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 12px',borderTop:`1px solid ${brd}`,background:h2bg,flexShrink:0,fontSize:11,color:txtD}}>
+      {/* ══ Pager — sempre visível no modo analítica ══════ */}
+      {view==='analitica' && (
+        <div style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',borderTop:`1px solid ${brd}`,background:h2bg,flexShrink:0,fontSize:11,color:txtD}}>
           <button style={btnStyle()} onClick={()=>setPage(1)} disabled={page===1}>«</button>
           <button style={btnStyle()} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>‹</button>
-          {Array.from({length:Math.min(7,totalPages)},(_,i)=>{
-            const start=Math.max(1,Math.min(page-3,totalPages-6)); const p=start+i
-            return p<=totalPages?<button key={p} style={btnStyle(page===p)} onClick={()=>setPage(p)}>{p}</button>:null
+          {Array.from({length:Math.min(7,totalPages||1)},(_,i)=>{
+            const start=Math.max(1,Math.min(page-3,(totalPages||1)-6))
+            const p=start+i
+            return p<=(totalPages||1)?<button key={p} style={btnStyle(page===p)} onClick={()=>setPage(p)}>{p}</button>:null
           })}
-          <button style={btnStyle()} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>›</button>
-          <button style={btnStyle()} onClick={()=>setPage(totalPages)} disabled={page===totalPages}>»</button>
-          <span style={{marginLeft:'auto'}}>Pág. {page}/{totalPages} · {sorted.length.toLocaleString('pt-BR')} {countLabel}</span>
+          <button style={btnStyle()} onClick={()=>setPage(p=>Math.min(totalPages||1,p+1))} disabled={page>=(totalPages||1)}>›</button>
+          <button style={btnStyle()} onClick={()=>setPage(totalPages||1)} disabled={page>=(totalPages||1)}>»</button>
+          <span style={{marginLeft:'auto',color:txtVD}}>
+            {page}/{totalPages||1} · {sorted.length.toLocaleString('pt-BR')} {countLabel}
+          </span>
         </div>
       )}
 

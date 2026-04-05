@@ -196,20 +196,41 @@ export default function AnalytrickApp() {
       let offset = 0
       const {col,asc} = getOrderBy(tab)
       const BATCH = 1000
+      // Primeiro busca o total para mostrar progresso
+      let totalCount = 0
+      try {
+        let cq = supabase.from(table).select('*', {count:'exact', head:true})
+        if (tab==='anuncios') cq = cq.eq('status','active')
+        const {count} = await cq
+        totalCount = count || 0
+      } catch {}
       while (true) {
         let q = supabase.from(table).select('*').range(offset, offset + BATCH - 1)
         if (tab==='anuncios') q = q.eq('status','active')
-        q = q.order(col, {ascending:asc})
+        q = q.order(col, {ascending:asc, nullsFirst:false})
         const {data:batch, error} = await q
-        if (error) { console.error(error); break }
+        if (error) { console.error('Supabase error:', error.message, error.code); break }
         if (!batch?.length) break
         rows = [...rows, ...batch as Record<string,unknown>[]]
-        // Continua enquanto vier batches completos (não chegou no fim)
         if (batch.length < BATCH) break
         offset += batch.length
+        // Atualiza toast com progresso
+        if (totalCount > BATCH) {
+          setToast(`⏳ Carregando ${rows.length.toLocaleString('pt-BR')} / ${totalCount.toLocaleString('pt-BR')}...`)
+        }
       }
       if (tab==='anuncios') {
-        rows = rows.map(r => ({...r, receita:((r.price as number)||0)*((r.sold_quantity as number)||0)}))
+        rows = rows.map(r => ({
+          ...r,
+          // Banco usa user_id mas extensão/renderCell usa seller_id
+          seller_id: r.seller_id || r.user_id,
+          // Permalink calculado
+          permalink: r.permalink || (r.item_id ? `https://www.mercadolivre.com.br/p/${r.item_id}` : '#'),
+          // Receita calculada
+          receita: ((r.price as number)||0) * ((r.sold_quantity as number)||0),
+          // Listing calculado
+          listing: r.listing || (r.catalog_product_id ? 'PRODUTO CATÁLOGO' : r.user_product_id ? 'PRODUTO USUÁRIO' : 'TRADICIONAL'),
+        }))
       }
       setData(d => ({...d,[tab]:rows}))
       setLoaded(s => new Set([...s, key]))
