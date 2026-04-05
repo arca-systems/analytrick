@@ -132,7 +132,7 @@ export default function AnalytrickApp() {
       marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
       vendedores:  {col:'created_at',    asc:false},
       produtos:    {col:'brand',           asc:true },
-      fornecedores:{col:'suplier',       asc:true },
+      fornecedores:{col:'supplier',      asc:true },
     }
     return m[tab]
   }
@@ -580,28 +580,54 @@ export default function AnalytrickApp() {
           animation:'fadeInUp .2s ease',
         }}>{toast}</div>
       )}
-      {/* Log panel */}
+      {/* Modal LOG — tela cheia, fiel à extensão */}
       {showLog && (
         <div style={{
-          position:'fixed', bottom:56, right:0, width:480, maxHeight:320,
-          background:'#0f172a', border:`1px solid ${brd}`, borderRadius:'8px 0 0 8px',
-          zIndex:9999, display:'flex', flexDirection:'column',
-          boxShadow:'-4px 0 20px rgba(0,0,0,.6)',
-        }}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',borderBottom:`1px solid ${brd}`,flexShrink:0}}>
-            <span style={{fontSize:11,fontWeight:700,color:'#93c5fd'}}>📋 LOG ({logs.length})</span>
-            <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>setLogs([])} style={{background:'none',border:`1px solid ${brd}`,borderRadius:4,color:txtD,cursor:'pointer',fontSize:10,padding:'2px 8px',fontFamily:'inherit'}}>🗑 Limpar</button>
-              <button onClick={()=>setShowLog(false)} style={{background:'none',border:'none',color:txtD,cursor:'pointer',fontSize:16,lineHeight:1}}>✕</button>
+          position:'fixed', inset:0, zIndex:10000,
+          background:'rgba(0,0,0,.75)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }} onClick={e=>{ if(e.target===e.currentTarget) setShowLog(false) }}>
+          <div style={{
+            width:'min(860px, 95vw)', height:'min(560px, 90vh)',
+            background:'#0f172a', border:`1px solid ${brd}`,
+            borderRadius:12, display:'flex', flexDirection:'column',
+            boxShadow:'0 20px 60px rgba(0,0,0,.8)',
+          }}>
+            {/* Header */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 16px',borderBottom:`1px solid ${brd}`,flexShrink:0}}>
+              <span style={{fontSize:12,fontWeight:700,color:'#93c5fd',letterSpacing:'.5px'}}>📋 LOG — {logs.length} entradas</span>
+              <div style={{display:'flex',gap:8}}>
+                <button
+                  onClick={()=>{
+                    try { navigator.clipboard.writeText(logs.join('
+')); showToast('✓ Log copiado') } catch {}
+                  }}
+                  style={{background:'none',border:`1px solid ${brd}`,borderRadius:5,color:txtM,cursor:'pointer',fontSize:10,padding:'4px 10px',fontFamily:'inherit',fontWeight:700}}
+                >📋 Copiar</button>
+                <button
+                  onClick={()=>setLogs([])}
+                  style={{background:'none',border:`1px solid ${brd}`,borderRadius:5,color:txtM,cursor:'pointer',fontSize:10,padding:'4px 10px',fontFamily:'inherit',fontWeight:700}}
+                >🗑 Limpar</button>
+                <button
+                  onClick={()=>setShowLog(false)}
+                  style={{background:'none',border:'none',color:txtD,cursor:'pointer',fontSize:18,lineHeight:1,padding:'0 4px'}}
+                >✕</button>
+              </div>
             </div>
-          </div>
-          <div style={{overflowY:'auto',flex:1,padding:8}}>
-            {logs.length === 0
-              ? <div style={{color:txtVD,fontSize:11,textAlign:'center',padding:20}}>Nenhum log ainda. Carregue um módulo.</div>
-              : logs.map((l,i) => (
-                <div key={i} style={{fontSize:10,color:l.includes('❌')?'#f87171':l.includes('✓')?'#4ade80':'#94a3b8',fontFamily:'monospace',padding:'2px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>{l}</div>
-              ))
-            }
+            {/* Log lines */}
+            <div style={{overflowY:'auto',flex:1,padding:'8px 12px',fontFamily:'monospace'}}>
+              {logs.length === 0
+                ? <div style={{color:txtVD,fontSize:11,textAlign:'center',padding:40}}>Nenhum log ainda. Clique em um módulo para carregar dados.</div>
+                : logs.map((l,i) => (
+                  <div key={i} style={{
+                    fontSize:11, lineHeight:'1.7',
+                    color: l.includes('❌') ? '#f87171' : l.includes('✓') ? '#4ade80' : l.includes('⏳') ? '#fbbf24' : '#94a3b8',
+                    borderBottom:'1px solid rgba(255,255,255,.03)',
+                    padding:'1px 0',
+                  }}>{l}</div>
+                ))
+              }
+            </div>
           </div>
         </div>
       )}

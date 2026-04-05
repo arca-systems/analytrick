@@ -222,7 +222,7 @@ export const PRODUTO_COLS: ColDef[] = [
 
 // ── Fornecedores (sem canal) — tabela: suppliers ─────────────
 export const FORNECEDOR_COLS: ColDef[] = [
-  { key:'suplier',    label:'FORNECEDOR', w:'260px', sortable:true,  visible:true,  fixed:true },
+  { key:'supplier',   label:'FORNECEDOR', w:'260px', sortable:true,  visible:true,  fixed:true },
   { key:'id',         label:'ID',         w:'80px',  sortable:true,  visible:false },
   { key:'created_at', label:'CADASTRO',   w:'120px', sortable:true,  visible:true  },
 ]
