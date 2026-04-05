@@ -117,7 +117,7 @@ export const HOME_CAT_COLS: ColDef[] = [
   { key:'created_at',              label:'CRIADO EM',          w:'110px', sortable:true,  visible:false },
 ]
 
-// ── Marcas (sem canal) — tabela: brands ─────────────────────
+// ── Marcas (Home) — tabela: brands ─────────────────────────
 export const BRAND_COLS: ColDef[] = [
   { key:'brand',           label:'MARCA',      w:'200px', sortable:true,  visible:true,  fixed:true },
   { key:'country',         label:'PAÍS',       w:'90px',  sortable:true,  visible:true  },
@@ -129,6 +129,18 @@ export const BRAND_COLS: ColDef[] = [
   { key:'created_at',      label:'CRIADO EM',  w:'110px', sortable:true,  visible:false },
 ]
 
+// ── Marcas (ML) — tabela: mercadolibre_brands ───────────────
+export const ML_BRAND_COLS: ColDef[] = [
+  { key:'brand',             label:'MARCA',             w:'160px', sortable:true,  visible:true,  fixed:true },
+  { key:'results',           label:'RESULTADOS',        w:'110px', sortable:true,  visible:true  },
+  { key:'brand_listing_url', label:'URL ANÚNCIOS',      w:'200px', sortable:false, visible:true  },
+  { key:'oficial_store_url', label:'URL LOJA OFICIAL',  w:'200px', sortable:false, visible:false },
+  { key:'store_url',         label:'URL LOJA',          w:'200px', sortable:false, visible:false },
+  { key:'store_listing_url', label:'URL ANÚNCIOS LOJA', w:'200px', sortable:false, visible:false },
+  { key:'page_url',          label:'URL PÁGINA',        w:'200px', sortable:false, visible:false },
+  { key:'page_listing_url',  label:'URL ANÚNCIOS PG',   w:'200px', sortable:false, visible:false },
+]
+
 // ── Tendências (ML) — tabela: mercadolibre_trends ───────────
 export const TREND_COLS: ColDef[] = [
   { key:'trends_rank', label:'RANK',          w:'60px',  sortable:true,  visible:true,  fixed:true },
@@ -136,6 +148,8 @@ export const TREND_COLS: ColDef[] = [
   { key:'trends_type', label:'TIPO',          w:'120px', sortable:true,  visible:true  },
   { key:'category_id', label:'CATEGORIA',     w:'180px', sortable:true,  visible:true  },
   { key:'results',     label:'RESULTADOS',    w:'110px', sortable:true,  visible:true  },
+  { key:'position',    label:'POSIÇÃO',       w:'80px',  sortable:true,  visible:false },
+  { key:'url',         label:'URL',           w:'200px', sortable:false, visible:false },
   { key:'created_at',  label:'ATUALIZADO',    w:'100px', sortable:true,  visible:true  },
 ]
 
@@ -207,14 +221,10 @@ export const PRODUTO_COLS: ColDef[] = [
 ]
 
 // ── Fornecedores (sem canal) — tabela: suppliers ─────────────
-// Tabela ainda sem estrutura definida — colunas genéricas
 export const FORNECEDOR_COLS: ColDef[] = [
-  { key:'name',       label:'NOME',     w:'200px', sortable:true,  visible:true,  fixed:true },
-  { key:'email',      label:'E-MAIL',   w:'180px', sortable:true,  visible:true  },
-  { key:'phone',      label:'TELEFONE', w:'120px', sortable:false, visible:true  },
-  { key:'country',    label:'PAÍS',     w:'90px',  sortable:true,  visible:true  },
-  { key:'status',     label:'STATUS',   w:'80px',  sortable:true,  visible:true  },
-  { key:'created_at', label:'CADASTRO', w:'100px', sortable:true,  visible:false },
+  { key:'suplier',    label:'FORNECEDOR', w:'260px', sortable:true,  visible:true,  fixed:true },
+  { key:'id',         label:'ID',         w:'80px',  sortable:true,  visible:false },
+  { key:'created_at', label:'CADASTRO',   w:'120px', sortable:true,  visible:true  },
 ]
 
 // ── Destaques (mesmas de anúncios sem variation) ─────────────

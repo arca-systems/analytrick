@@ -8,7 +8,7 @@ import {
   TabId, Channel, ChannelOption,
 } from '@/types'
 import {
-  AN_COLS, CAT_COLS, HOME_CAT_COLS, BRAND_COLS, TREND_COLS, HOME_TREND_COLS, USER_COLS,
+  AN_COLS, CAT_COLS, HOME_CAT_COLS, BRAND_COLS, ML_BRAND_COLS, TREND_COLS, HOME_TREND_COLS, USER_COLS,
   PRODUTO_COLS, FORNECEDOR_COLS,
 } from '@/lib/colDefs'
 
@@ -27,7 +27,7 @@ const EMPTY_LOADING = (): LoadingMap => ({
 const INIT_COLS = (ch: import('@/types').Channel): ColMap => ({
   anuncios: [...AN_COLS],
   categorias: ch === null ? [...HOME_CAT_COLS] : [...CAT_COLS],
-  marcas: [...BRAND_COLS],
+  marcas: ch === null ? [...BRAND_COLS] : [...ML_BRAND_COLS],
   vendedores: [...USER_COLS],
   tendencias: ch === null ? [...HOME_TREND_COLS] : [...TREND_COLS],
   produtos: [...PRODUTO_COLS],
@@ -132,7 +132,7 @@ export default function AnalytrickApp() {
       marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
       vendedores:  {col:'created_at',    asc:false},
       produtos:    {col:'brand',           asc:true },
-      fornecedores:{col:'name',          asc:true },
+      fornecedores:{col:'suplier',       asc:true },
     }
     return m[tab]
   }
@@ -206,16 +206,15 @@ export default function AnalytrickApp() {
     if (!table) { setData(d => ({...d,[tab]:[]})); return }
 
     setLoading(l => ({...l,[tab]:true}))
-    appendLog(`⏳ Iniciando ${tab} — tabela: ${table} (canal: ${chKey})`)
+    const {col, asc} = getOrderBy(tab)
+    appendLog(`⏳ ${tab} → tabela: ${table} | order: ${col} | canal: ${chKey}`)
     try {
       let rows: Record<string,unknown>[] = []
       let offset = 0
-      const {col,asc} = getOrderBy(tab)
       const BATCH = 1000
       while (true) {
         let q = supabase.from(table).select('*').range(offset, offset + BATCH - 1)
         if (tab==='anuncios') q = q.eq('status','active')
-        // Só ordena se col existir
         if (col) q = q.order(col, {ascending:asc})
         const {data:batch, error} = await q
         if (error) {
