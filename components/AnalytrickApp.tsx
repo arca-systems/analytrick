@@ -8,7 +8,7 @@ import {
   TabId, Channel, ChannelOption,
 } from '@/types'
 import {
-  AN_COLS, CAT_COLS, BRAND_COLS, TREND_COLS, USER_COLS,
+  AN_COLS, CAT_COLS, HOME_CAT_COLS, BRAND_COLS, TREND_COLS, USER_COLS,
   PRODUTO_COLS, FORNECEDOR_COLS,
 } from '@/lib/colDefs'
 
@@ -111,13 +111,13 @@ export default function AnalytrickApp() {
   }
   function getOrderBy(tab: TabId) {
     const m: Record<TabId, {col:string;asc:boolean}> = {
-      anuncios:    {col:'sold_quantity',asc:false},
-      tendencias:  {col:'trends_rank',  asc:true },
-      categorias:  {col:'category_tree',asc:true },
-      marcas:      {col:'results',      asc:false},
-      vendedores:  {col:'created_at',   asc:false},
-      produtos:    {col:'title',        asc:true },
-      fornecedores:{col:'name',         asc:true },
+      anuncios:    {col:'sold_quantity', asc:false},
+      tendencias:  {col:'trends_rank',   asc:true },
+      categorias:  {col: channel===null ? 'category' : 'category_tree', asc:true },
+      marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
+      vendedores:  {col:'created_at',    asc:false},
+      produtos:    {col:'brand',         asc:true },
+      fornecedores:{col:'name',          asc:true },
     }
     return m[tab]
   }

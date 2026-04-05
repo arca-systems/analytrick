@@ -344,11 +344,13 @@ export function DataTable({
                             userSelect:'none',cursor:'pointer',
                             borderRight:'1px solid rgba(255,255,255,.08)',
                           }}>
-                          <div style={{display:'flex',alignItems:'center',gap:4}}>
-                            <span>{col.label}</span>
-                            {hasFilter && <span style={{color:'#fbbf24'}}>▼</span>}
-                            {isSorted && <span>{sortDir===1?'↑':'↓'}</span>}
-                            {!isSorted&&!hasFilter&&col.sortable && <span style={{opacity:.35,fontSize:9}}>↕</span>}
+                          <div style={{display:'flex',alignItems:'center',gap:3,overflow:'hidden'}}>
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{col.label}</span>
+                            <span style={{flexShrink:0}}>
+                              {hasFilter && <span style={{color:'#fbbf24'}}>▼</span>}
+                              {isSorted && <span>{sortDir===1?'↑':'↓'}</span>}
+                              {!isSorted&&!hasFilter&&col.sortable && <span style={{opacity:.35,fontSize:9}}>↕</span>}
+                            </span>
                           </div>
                         </th>
                       )

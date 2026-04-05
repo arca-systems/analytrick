@@ -88,7 +88,7 @@ export const AN_COLS: ColDef[] = [
   { key:'listing_type_id',        label:'ID TIPO DE ANUNCIO',              w:'130px', sortable:true,  visible:false },
 ]
 
-// ── Categorias ───────────────────────────────────────────────
+// ── Categorias (ML) — tabela: mercadolibre_categories ───────
 export const CAT_COLS: ColDef[] = [
   { key:'category_parent', label:'CATEGORIA PAI',  w:'180px', sortable:true,  visible:true,  fixed:true },
   { key:'category_tree',   label:'CATEGORIA',      w:'300px', sortable:true,  visible:true,  fixed:true },
@@ -107,16 +107,26 @@ export const CAT_COLS: ColDef[] = [
   { key:'permalink',       label:'URL',            w:'100px', sortable:false, visible:false },
 ]
 
-// ── Marcas ───────────────────────────────────────────────────
+// ── Categorias (Home) — tabela: categories ───────────────────
+export const HOME_CAT_COLS: ColDef[] = [
+  { key:'category',                label:'CATEGORIA',          w:'220px', sortable:true,  visible:true,  fixed:true },
+  { key:'mercadolibre_category_id',label:'ID MERCADO LIVRE',   w:'160px', sortable:true,  visible:true  },
+  { key:'shopee_category_id',      label:'ID SHOPEE',          w:'130px', sortable:true,  visible:true  },
+  { key:'amazon_category_id',      label:'ID AMAZON',          w:'130px', sortable:true,  visible:true  },
+  { key:'magazineluiza_category_id',label:'ID MAGALU',         w:'130px', sortable:true,  visible:true  },
+  { key:'created_at',              label:'CRIADO EM',          w:'110px', sortable:true,  visible:false },
+]
+
+// ── Marcas (sem canal) — tabela: brands ─────────────────────
 export const BRAND_COLS: ColDef[] = [
-  { key:'brand',             label:'MARCA',             w:'160px', sortable:true,  visible:true,  fixed:true },
-  { key:'results',           label:'RESULTADOS',        w:'110px', sortable:true,  visible:true  },
-  { key:'brand_listing_url', label:'URL ANÚNCIOS',      w:'200px', sortable:false, visible:true  },
-  { key:'oficial_store_url', label:'URL LOJA OFICIAL',  w:'200px', sortable:false, visible:false },
-  { key:'store_url',         label:'URL LOJA',          w:'200px', sortable:false, visible:false },
-  { key:'store_listing_url', label:'URL ANÚNCIOS LOJA', w:'200px', sortable:false, visible:false },
-  { key:'page_url',          label:'URL PÁGINA',        w:'200px', sortable:false, visible:false },
-  { key:'page_listing_url',  label:'URL ANÚNCIOS PG',   w:'200px', sortable:false, visible:false },
+  { key:'brand',           label:'MARCA',      w:'200px', sortable:true,  visible:true,  fixed:true },
+  { key:'country',         label:'PAÍS',       w:'90px',  sortable:true,  visible:true  },
+  { key:'brand_url',       label:'SITE',       w:'200px', sortable:false, visible:true  },
+  { key:'brand_instagram', label:'INSTAGRAM',  w:'160px', sortable:false, visible:true  },
+  { key:'brand_facebook',  label:'FACEBOOK',   w:'160px', sortable:false, visible:false },
+  { key:'brand_youtube',   label:'YOUTUBE',    w:'160px', sortable:false, visible:false },
+  { key:'brand_tiktok',    label:'TIKTOK',     w:'160px', sortable:false, visible:false },
+  { key:'created_at',      label:'CRIADO EM',  w:'110px', sortable:true,  visible:false },
 ]
 
 // ── Tendências ───────────────────────────────────────────────
@@ -168,20 +178,31 @@ export const TOP100_COLS: ColDef[] = [
   { key:'created_at',                            label:'ATUALIZADO',   w:'110px', sortable:true,  visible:false },
 ]
 
-// ── Produtos (sem canal) ─────────────────────────────────────
+// ── Produtos (sem canal) — tabela: products ──────────────────
 export const PRODUTO_COLS: ColDef[] = [
-  { key:'thumbnail',  label:'IMAGEM',    w:'90px',  sortable:false, visible:true,  fixed:true },
-  { key:'title',      label:'TÍTULO',    w:'260px', sortable:true,  visible:true,  fixed:true },
-  { key:'brand',      label:'MARCA',     w:'120px', sortable:true,  visible:true  },
-  { key:'category',   label:'CATEGORIA', w:'150px', sortable:true,  visible:true  },
-  { key:'price',      label:'PREÇO',     w:'100px', sortable:true,  visible:true  },
-  { key:'sku',        label:'SKU',       w:'90px',  sortable:true,  visible:true  },
-  { key:'gtin',       label:'GTIN',      w:'90px',  sortable:false, visible:false },
-  { key:'status',     label:'STATUS',    w:'80px',  sortable:true,  visible:true  },
-  { key:'created_at', label:'CRIADO EM', w:'110px', sortable:true,  visible:false },
+  { key:'brand',            label:'MARCA',       w:'130px', sortable:true,  visible:true,  fixed:true },
+  { key:'category',         label:'CATEGORIA',   w:'150px', sortable:true,  visible:true  },
+  { key:'model',            label:'MODELO',      w:'160px', sortable:true,  visible:true  },
+  { key:'line',             label:'LINHA',        w:'120px', sortable:true,  visible:true  },
+  { key:'version',          label:'VERSÃO',       w:'100px', sortable:true,  visible:true  },
+  { key:'serie',            label:'SÉRIE',        w:'100px', sortable:true,  visible:true  },
+  { key:'origin',           label:'ORIGEM',       w:'100px', sortable:true,  visible:true  },
+  { key:'sku',              label:'SKU',          w:'110px', sortable:true,  visible:true  },
+  { key:'gtin',             label:'GTIN',         w:'130px', sortable:true,  visible:true  },
+  { key:'spu',              label:'SPU',          w:'110px', sortable:true,  visible:false },
+  { key:'skc',              label:'SKC',          w:'110px', sortable:true,  visible:false },
+  { key:'mpn',              label:'MPN',          w:'110px', sortable:true,  visible:false },
+  { key:'oem',              label:'OEM',          w:'110px', sortable:true,  visible:false },
+  { key:'pn',               label:'PN',           w:'90px',  sortable:true,  visible:false },
+  { key:'sn',               label:'SN',           w:'90px',  sortable:true,  visible:false },
+  { key:'alphanumeric_model',label:'MOD. ALFA',   w:'120px', sortable:true,  visible:false },
+  { key:'attributes',       label:'ATRIBUTOS',    w:'180px', sortable:false, visible:false },
+  { key:'variations',       label:'VARIAÇÕES',    w:'180px', sortable:false, visible:false },
+  { key:'created_at',       label:'CRIADO EM',    w:'110px', sortable:true,  visible:false },
 ]
 
-// ── Fornecedores (sem canal) ─────────────────────────────────
+// ── Fornecedores (sem canal) — tabela: suppliers ─────────────
+// Tabela ainda sem estrutura definida — colunas genéricas
 export const FORNECEDOR_COLS: ColDef[] = [
   { key:'name',       label:'NOME',     w:'200px', sortable:true,  visible:true,  fixed:true },
   { key:'email',      label:'E-MAIL',   w:'180px', sortable:true,  visible:true  },
