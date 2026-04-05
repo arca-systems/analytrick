@@ -236,11 +236,11 @@ export default function AnalytrickApp() {
       setLoaded(s => new Set([...s, key]))
       // Salva cache na sessão (máx ~4MB por item)
       try { sessionStorage.setItem(`atk_cache_${key}`, JSON.stringify(rows)) } catch {}
-      showToast(`✓ ${rows.length.toLocaleString('pt-BR')} ${COUNT_LABEL[tab]} carregados`)
     } catch(e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido'
+      appendLog(`❌ ${tab} exception: ${msg}`)
       console.error('loadTab error:', msg)
-      showToast('Erro ao carregar dados')
+      showToast('Erro: ' + msg)
     } finally {
       setLoading(l => ({...l,[tab]:false}))
     }
@@ -251,6 +251,11 @@ export default function AnalytrickApp() {
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(null), 2500)
+  }
+
+  function appendLog(msg: string) {
+    const ts = new Date().toLocaleTimeString('pt-BR')
+    setLogs(l => [`[${ts}] ${msg}`, ...l].slice(0, 200))
   }
 
   async function handleLogout() {
@@ -553,7 +558,7 @@ export default function AnalytrickApp() {
           <button style={footerBtn} title="Tabela de Frete">🚚 FRETES</button>
           <button style={footerBtn} title="Calculadora de Preço">🧮 CALCULADORA</button>
           <button style={footerBtn} title="Atualizações">🆕 UPDATES</button>
-          {isAdmin && <button style={footerBtn} title="Ver logs">📋 LOG</button>}
+          <button style={{...footerBtn, color: logs.length > 0 ? '#60a5fa' : undefined}} onClick={()=>setShowLog(v=>!v)} title="Ver logs">📋 LOG {logs.length > 0 ? `(${logs.length})` : ''}</button>
         </div>
       </div>
 
@@ -567,6 +572,32 @@ export default function AnalytrickApp() {
           animation:'fadeInUp .2s ease',
         }}>{toast}</div>
       )}
+      {/* Log panel */}
+      {showLog && (
+        <div style={{
+          position:'fixed', bottom:56, right:0, width:480, maxHeight:320,
+          background:'#0f172a', border:`1px solid ${brd}`, borderRadius:'8px 0 0 8px',
+          zIndex:9999, display:'flex', flexDirection:'column',
+          boxShadow:'-4px 0 20px rgba(0,0,0,.6)',
+        }}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',borderBottom:`1px solid ${brd}`,flexShrink:0}}>
+            <span style={{fontSize:11,fontWeight:700,color:'#93c5fd'}}>📋 LOG ({logs.length})</span>
+            <div style={{display:'flex',gap:6}}>
+              <button onClick={()=>setLogs([])} style={{background:'none',border:`1px solid ${brd}`,borderRadius:4,color:txtD,cursor:'pointer',fontSize:10,padding:'2px 8px',fontFamily:'inherit'}}>🗑 Limpar</button>
+              <button onClick={()=>setShowLog(false)} style={{background:'none',border:'none',color:txtD,cursor:'pointer',fontSize:16,lineHeight:1}}>✕</button>
+            </div>
+          </div>
+          <div style={{overflowY:'auto',flex:1,padding:8}}>
+            {logs.length === 0
+              ? <div style={{color:txtVD,fontSize:11,textAlign:'center',padding:20}}>Nenhum log ainda. Carregue um módulo.</div>
+              : logs.map((l,i) => (
+                <div key={i} style={{fontSize:10,color:l.includes('❌')?'#f87171':l.includes('✓')?'#4ade80':'#94a3b8',fontFamily:'monospace',padding:'2px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>{l}</div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
     </div>
   )
