@@ -75,10 +75,27 @@ export default function AnalytrickApp() {
     })
   }, [])
 
-  // ── Ajusta tab ao trocar canal ────────────────────────────
+  // ── Ajusta tab e colunas ao trocar canal ────────────────
   useEffect(() => {
     const available = (channel === null ? TABS_NO_CHANNEL : TABS_WITH_CHANNEL).map(t => t.id)
     if (!available.includes(activeTab)) setActiveTab(available[0] as TabId)
+    // Limpa cache e reseta colunas conforme canal
+    try {
+      Object.keys(sessionStorage).forEach(k => {
+        if (k.startsWith('atk_cache_')) sessionStorage.removeItem(k)
+      })
+    } catch {}
+    setData(EMPTY_DATA())
+    setLoaded(new Set())
+    setColDefs({
+      anuncios:     [...AN_COLS],
+      categorias:   channel === null ? [...HOME_CAT_COLS] : [...CAT_COLS],
+      marcas:       [...BRAND_COLS],
+      vendedores:   [...USER_COLS],
+      tendencias:   channel === null ? [...HOME_TREND_COLS] : [...TREND_COLS],
+      produtos:     [...PRODUTO_COLS],
+      fornecedores: [...FORNECEDOR_COLS],
+    })
   }, [channel])
 
   // ── Tema ─────────────────────────────────────────────────
