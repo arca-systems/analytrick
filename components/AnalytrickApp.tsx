@@ -599,8 +599,7 @@ export default function AnalytrickApp() {
               <div style={{display:'flex',gap:8}}>
                 <button
                   onClick={()=>{
-                    try { navigator.clipboard.writeText(logs.join('
-')); showToast('✓ Log copiado') } catch {}
+                    try { navigator.clipboard.writeText(logs.join('\n')); showToast('✓ Log copiado') } catch {}
                   }}
                   style={{background:'none',border:`1px solid ${brd}`,borderRadius:5,color:txtM,cursor:'pointer',fontSize:10,padding:'4px 10px',fontFamily:'inherit',fontWeight:700}}
                 >📋 Copiar</button>
