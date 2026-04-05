@@ -579,57 +579,93 @@ export function DataTable({
         </div>
       )}
 
-      {/* ══ Col Manager (direita, com drag-to-reorder) ══ */}
+      {/* ══ Col Manager — fiel à extensão ══════════════ */}
       {showCols && (
         <div style={{
-          position:'absolute', top:0, right:0, bottom:0, width:300,
-          background:isDark?'#1f2937':'#fff', border:`1px solid ${brd}`,
-          borderLeft:`2px solid ${brd}`, zIndex:9998,
-          display:'flex', flexDirection:'column',
-          boxShadow:'-4px 0 20px rgba(0,0,0,.4)',
+          position:'absolute', top:88, right:16, zIndex:9999,
+          background:isDark?'#1f2937':'#fff',
+          border:`1px solid ${brd}`, borderRadius:10,
+          width:240, maxHeight:'calc(100% - 110px)',
+          boxShadow:'0 8px 40px rgba(0,0,0,.8)',
+          display:'flex', flexDirection:'column', overflow:'hidden',
         }}>
-          <div style={{padding:'12px 16px',borderBottom:`1px solid ${brd}`,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-            <span style={{fontSize:12,fontWeight:800,color:txt,letterSpacing:'.5px'}}>⊞ COLUNAS · {colDefs.filter(c=>c.visible||fixedKeys.has(c.key)).length} visíveis</span>
-            <button onClick={()=>setShowCols(false)} style={{background:'none',border:'none',color:txtD,cursor:'pointer',fontSize:18,lineHeight:1}}>✕</button>
+          {/* Header */}
+          <div style={{padding:'9px 12px',borderBottom:`1px solid ${brd}`,fontSize:11,fontWeight:700,color:'#93c5fd',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+            <span>⊞ COLUNAS · {colDefs.filter(c=>c.visible||fixedKeys.has(c.key)).length} visíveis</span>
+            <button onClick={()=>setShowCols(false)} style={{background:'none',border:'none',color:txtM,cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>✕</button>
           </div>
-          <div style={{fontSize:9,color:txtVD,padding:'6px 16px',borderBottom:`1px solid ${brd}`,flexShrink:0}}>
-            ☰ Arraste para reordenar · Toggle para mostrar/ocultar
-          </div>
-          <div style={{overflowY:'auto',flex:1}}>
-            {colDefs.map((col, idx) => (
-              <div key={col.key}
-                draggable={!fixedKeys.has(col.key)}
-                onDragStart={()=>onDragStart(idx)}
-                onDragOver={e=>onDragOver(e,idx)}
-                onDrop={()=>onDrop(idx)}
-                style={{
-                  display:'flex',alignItems:'center',gap:10,
-                  padding:'7px 16px',
-                  cursor:fixedKeys.has(col.key)?'not-allowed':'grab',
-                  opacity:fixedKeys.has(col.key)?.5:1,
-                  fontSize:12,color:txt,
-                  background: dragOver===idx ? (isDark?'#1e3a5f':'#dbeafe') : '',
-                  borderBottom:`1px solid ${brd2}`,
-                  transition:'background .1s',
-                }}
-                onMouseEnter={e=>{if(!fixedKeys.has(col.key))e.currentTarget.style.background=isDark?'#273549':'#f3f4f6'}}
-                onMouseLeave={e=>{if(dragOver!==idx)e.currentTarget.style.background=''}}
-              >
-                <span style={{color:txtVD,fontSize:12,flexShrink:0}}>☰</span>
-                <input type="checkbox" checked={col.visible||fixedKeys.has(col.key)} disabled={fixedKeys.has(col.key)}
-                  onChange={()=>{
-                    if (fixedKeys.has(col.key)) return
-                    onColDefsChange(colDefs.map(c=>c.key===col.key?{...c,visible:!c.visible}:c))
+          {/* Lista */}
+          <div style={{overflowY:'auto',flex:1,padding:'4px 0'}}>
+            {colDefs.map((col, idx) => {
+              const isFixed = fixedKeys.has(col.key)
+              const isOn = col.visible || isFixed
+              return (
+                <div key={col.key}
+                  draggable={!isFixed}
+                  onDragStart={()=>onDragStart(idx)}
+                  onDragOver={e=>onDragOver(e,idx)}
+                  onDrop={()=>onDrop(idx)}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    padding:'7px 10px', cursor:'default',
+                    fontSize:11, color:txtM,
+                    borderBottom:'1px solid rgba(255,255,255,.04)',
+                    background: dragOver===idx ? 'rgba(30,58,138,.2)' : '',
+                    transition:'background .1s',
                   }}
-                  style={{accentColor:'#3b82f6',flexShrink:0}}/>
-                <span style={{flex:1}}>{col.label}</span>
-                <span style={{fontSize:9,color:txtVD}}>{col.w}</span>
-              </div>
-            ))}
+                >
+                  {/* Drag handle */}
+                  <span style={{color:txtVD,fontSize:11,flexShrink:0,cursor:isFixed?'default':'grab',opacity:.5,userSelect:'none'}}>⠿</span>
+                  {/* Toggle switch — input escondido + slider CSS igual extensão */}
+                  <label style={{position:'relative',width:30,height:16,flexShrink:0,cursor:isFixed?'not-allowed':'pointer',display:'inline-block'}}>
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      disabled={isFixed}
+                      onChange={()=>{
+                        if(isFixed) return
+                        onColDefsChange(colDefs.map(c=>c.key===col.key?{...c,visible:!c.visible}:c))
+                      }}
+                      style={{opacity:0,width:0,height:0,position:'absolute'}}
+                    />
+                    <span style={{
+                      position:'absolute', inset:0, borderRadius:8,
+                      background: isOn ? '#3b82f6' : (isDark?'#374151':'#d1d5db'),
+                      transition:'background .2s',
+                    }}/>
+                    <span style={{
+                      position:'absolute', top:2,
+                      left: isOn ? 14 : 2,
+                      width:12, height:12, borderRadius:'50%',
+                      background:'#fff', transition:'left .2s',
+                      boxShadow:'0 1px 2px rgba(0,0,0,.3)',
+                    }}/>
+                  </label>
+                  {/* Label */}
+                  <span style={{flex:1, opacity:isOn?1:.4, textDecoration:isOn?'none':'line-through'}}>
+                    {col.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
-          <div style={{padding:12,borderTop:`1px solid ${brd}`,display:'flex',gap:8,flexShrink:0}}>
-            <button style={{...btnStyle(),flex:1}} onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:true}))}>☑ Todas</button>
-            <button style={{...btnStyle(),flex:1}} onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:false}))}>☐ Nenhuma</button>
+          {/* Footer */}
+          <div style={{padding:'8px 10px',borderTop:`1px solid ${brd}`,flexShrink:0,display:'flex',gap:6}}>
+            <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:true}))}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              ☑ Todos
+            </button>
+            <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:false}))}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              ☐ Nenhum
+            </button>
+            <button onClick={()=>{
+              const defaults = colDefs.map(c=>({...c, visible:!!c.fixed}))
+              onColDefsChange(defaults)
+            }}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              ↺ Padrão
+            </button>
           </div>
         </div>
       )}
