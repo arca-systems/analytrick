@@ -114,10 +114,15 @@ export default function LoginPage() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
-            <Link href="/auth/signup" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 600 }}>
-              Criar conta
-            </Link>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginTop: 4 }}>
+            <a
+              href="https://wa.me/5512974059088"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#25d366', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              💬 Solicitar acesso
+            </a>
             <Link href="/auth/forgot-password" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 600 }}>
               Esqueci minha senha
             </Link>
