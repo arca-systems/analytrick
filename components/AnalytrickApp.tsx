@@ -489,6 +489,7 @@ export default function AnalytrickApp() {
                 h2bg={h2bg} brd={brd} brd2={brd2}
                 txt={txt} txtM={txtM} txtD={txtD} txtVD={txtVD}
                 isAdmin={isAdmin}
+                hasDinamica={tab.id==='anuncios'}
               />
             </div>
           )

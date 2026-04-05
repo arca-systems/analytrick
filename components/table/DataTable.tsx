@@ -5,6 +5,7 @@ import { ColDef } from '@/types'
 import { renderCell } from '@/lib/renderCell'
 
 interface DataTableProps {
+  hasDinamica?: boolean
   rows: Record<string, unknown>[]
   colDefs: ColDef[]
   onColDefsChange: (cols: ColDef[]) => void
@@ -21,6 +22,7 @@ interface DataTableProps {
   h2bg?: string; brd?: string; brd2?: string
   txt?: string; txtM?: string; txtD?: string; txtVD?: string
   isAdmin?: boolean
+  hasDinamica?: boolean
 }
 
 type View = 'analitica' | 'dinamica' | 'graficos'
@@ -57,7 +59,7 @@ const PV_VIEWS = [
     } },
 ]
 
-function fmtR(v:number) { return v ? 'R$ '+Math.round(v).toLocaleString('pt-BR') : '—' }
+function fmtR(v:number) { if (!v && v!==0) return '—'; return v.toLocaleString('pt-BR', {style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}) }
 function fmtN(v:number) { return v!=null ? v.toLocaleString('pt-BR') : '—' }
 
 function buildPivotData(rows:Record<string,unknown>[], pvView:string) {
@@ -105,6 +107,7 @@ export function DataTable({
   h2bg='#111827', brd='#374151', brd2='#2d3748',
   txt='#f9fafb', txtM='#9ca3af', txtD='#6b7280', txtVD='#4b5563',
   isAdmin=false,
+  hasDinamica=false,
 }: DataTableProps) {
   const [sortCol, setSortCol]       = useState('')
   const [sortDir, setSortDir]       = useState<1|-1>(-1)
@@ -118,6 +121,8 @@ export function DataTable({
   const [view, setView]             = useState<View>('analitica')
   const [pvView, setPvView]         = useState('marca')
   const [pvExpanded, setPvExpanded] = useState<Set<string>>(new Set())
+  const [pvSortCol, setPvSortCol]   = useState('vendas')
+  const [pvSortDir, setPvSortDir]   = useState<1|-1>(-1)
   const [dragIdx, setDragIdx]       = useState<number|null>(null)
   const [dragOver, setDragOver]     = useState<number|null>(null)
   const ddRef = useRef<HTMLDivElement>(null)
@@ -219,8 +224,15 @@ export function DataTable({
   // Pivot data
   const pivotData = React.useMemo(() => {
     if (view !== 'dinamica') return []
-    return buildPivotData(rows, pvView)
-  }, [view, pvView, rows])
+    const data = buildPivotData(rows, pvView)
+    return [...data].sort((a,b) => {
+      const av = (a as Record<string,unknown>)[pvSortCol]
+      const bv = (b as Record<string,unknown>)[pvSortCol]
+      const an = parseFloat(String(av??0)), bn = parseFloat(String(bv??0))
+      if (!isNaN(an) && !isNaN(bn)) return (an - bn) * pvSortDir
+      return String(av??'').localeCompare(String(bv??''), 'pt-BR') * pvSortDir
+    })
+  }, [view, pvView, rows, pvSortCol, pvSortDir])
 
   const pvTotals = React.useMemo(() => {
     if (!pivotData.length) return null
@@ -262,23 +274,37 @@ export function DataTable({
       {/* ══ H2 toolbar ══════════════════════════════════ */}
       <div style={{display:'flex',alignItems:'center',height:38,flexShrink:0,background:h2bg,borderBottom:`2px solid ${brd2}`,padding:'0 10px',gap:6}}>
         <div style={{display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0,overflow:'hidden'}}>
-          {searchKeys.length>0 && (
-            <input type="text" placeholder="🔍 Buscar..."
-              value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
-              style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
-            />
+          {view==='dinamica' ? (
+            <>
+              <select value={pvView} onChange={e=>setPvView(e.target.value)}
+                style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600}}>
+                {PV_VIEWS.map(v=>(
+                  <option key={v.id} value={v.id}>{v.lbl1} / {v.lbl2}</option>
+                ))}
+              </select>
+              <span style={{fontSize:11,color:txtVD}}>{pivotData.length} grupos · {rows.length.toLocaleString('pt-BR')} itens</span>
+            </>
+          ) : (
+            <>
+              {searchKeys.length>0 && (
+                <input type="text" placeholder="🔍 Buscar..."
+                  value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
+                  style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
+                />
+              )}
+              <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
+                {sorted.length.toLocaleString('pt-BR')} {countLabel}
+                {hasFilters && <span style={{color:'#f59e0b',marginLeft:6}}>● filtrado</span>}
+              </span>
+            </>
           )}
-          <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
-            {sorted.length.toLocaleString('pt-BR')} {countLabel}
-            {hasFilters && <span style={{color:'#f59e0b',marginLeft:6}}>● filtrado</span>}
-          </span>
         </div>
         <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
           <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">✕ Filtros</button>
           <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">⊞ Colunas</button>
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
           <button style={btnStyle(view==='analitica')} onClick={()=>setView('analitica')}>≡ Analítica</button>
-          <button style={btnStyle(view==='dinamica')}  onClick={()=>setView('dinamica')}>⊞ Dinâmica</button>
+          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Dinâmica':'Dinâmica disponível apenas em Anúncios'}>⊞ Dinâmica</button>
           <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>📈 Gráficos</button>
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
           <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">⬇↑ Dados</button>
@@ -362,19 +388,7 @@ export function DataTable({
         {/* DINÂMICA (PIVOT) */}
         {view==='dinamica' && (
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-            {/* Seletor de agrupamento */}
-            <div style={{padding:'6px 10px',borderBottom:`1px solid ${brd2}`,background:h2bg,display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-              <span style={{fontSize:11,color:txtD,fontWeight:600}}>Agrupar por:</span>
-              <select value={pvView} onChange={e=>setPvView(e.target.value)}
-                style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600}}>
-                {PV_VIEWS.map(v=>(
-                  <option key={v.id} value={v.id}>{v.lbl1} / {v.lbl2}</option>
-                ))}
-              </select>
-              <span style={{fontSize:11,color:txtVD,marginLeft:4}}>{pivotData.length} grupos · {rows.length} itens</span>
-            </div>
-
-            {/* Tabela pivot */}
+            {/* Tabela pivot */
             <div style={{flex:1,overflow:'auto',minHeight:0}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed'}}>
                 <colgroup>
@@ -385,9 +399,19 @@ export function DataTable({
                 </colgroup>
                 <thead>
                   <tr>
-                    {[PV_VIEWS.find(v=>v.id===pvView)?.lbl1||'GRUPO','ANÚNCIOS','SELLERS','PREÇO MIN','PREÇO MED','PREÇO MAX','TICKET','VENDAS','RECEITA','V/S','A/S'].map(h=>(
-                      <th key={h} style={pvColStyle}>{h}</th>
-                    ))}
+                    {[{k:'k1',l:PV_VIEWS.find(v=>v.id===pvView)?.lbl1||'GRUPO',align:'left'},{k:'anuncios',l:'ANÚNCIOS',align:'right'},{k:'sellers',l:'SELLERS',align:'right'},{k:'price_min',l:'PREÇO MIN',align:'right'},{k:'price_med',l:'PREÇO MED',align:'right'},{k:'price_max',l:'PREÇO MAX',align:'right'},{k:'ticket',l:'TICKET',align:'right'},{k:'vendas',l:'VENDAS',align:'right'},{k:'receita',l:'RECEITA',align:'right'},{k:'vs',l:'V/S',align:'right',title:'Vendas / Sellers'},{k:'as',l:'A/S',align:'right',title:'Anúncios / Sellers'}].map((col,ci)=>{
+                      const isSorted=pvSortCol===col.k
+                      return (
+                        <th key={col.k}
+                          title={col.title||col.l}
+                          onClick={()=>{if(col.k==='k1')return;if(pvSortCol===col.k)setPvSortDir(d=>d===1?-1:1);else{setPvSortCol(col.k);setPvSortDir(-1)}}}
+                          style={{...pvColStyle,textAlign:col.align as 'left'|'right',background:isSorted?headerColorSorted:headerColor,cursor:col.k==='k1'?'default':'pointer'}}>
+                          <span>{col.l}</span>
+                          {isSorted && <span style={{marginLeft:3,fontSize:9}}>{pvSortDir===1?'↑':'↓'}</span>}
+                          {!isSorted && col.k!=='k1' && <span style={{opacity:.35,fontSize:9,marginLeft:3}}>↕</span>}
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
