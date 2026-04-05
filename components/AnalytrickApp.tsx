@@ -24,10 +24,14 @@ const EMPTY_LOADING = (): LoadingMap => ({
   anuncios: false, categorias: false, marcas: false, vendedores: false,
   tendencias: false, produtos: false, fornecedores: false,
 })
-const INIT_COLS = (): ColMap => ({
-  anuncios: [...AN_COLS], categorias: [...HOME_CAT_COLS], marcas: [...BRAND_COLS],
-  vendedores: [...USER_COLS], tendencias: [...HOME_TREND_COLS],
-  produtos: [...PRODUTO_COLS], fornecedores: [...FORNECEDOR_COLS],
+const INIT_COLS = (ch: import('@/types').Channel): ColMap => ({
+  anuncios: [...AN_COLS],
+  categorias: ch === null ? [...HOME_CAT_COLS] : [...CAT_COLS],
+  marcas: [...BRAND_COLS],
+  vendedores: [...USER_COLS],
+  tendencias: ch === null ? [...HOME_TREND_COLS] : [...TREND_COLS],
+  produtos: [...PRODUTO_COLS],
+  fornecedores: [...FORNECEDOR_COLS],
 })
 
 // Canais: Home primeiro, resto alfabético
@@ -49,9 +53,11 @@ export default function AnalytrickApp() {
   const [data, setData]                   = useState<DataMap>(EMPTY_DATA())
   const [loading, setLoading]             = useState<LoadingMap>(EMPTY_LOADING())
   const [loaded, setLoaded]               = useState<Set<string>>(new Set())
-  const [colDefs, setColDefs]             = useState<ColMap>(INIT_COLS())
+  const [colDefs, setColDefs]             = useState<ColMap>(() => INIT_COLS(null))
   const [user, setUser]                   = useState<{ email?: string; name?: string; role?: string; status?: string } | null>(null)
   const [toast, setToast]                 = useState<string | null>(null)
+  const [logs, setLogs]                   = useState<string[]>([])
+  const [showLog, setShowLog]             = useState(false)
   const [imposto, setImposto]             = useState(0)
   const [roi, setRoi]                     = useState(20)
 
@@ -87,15 +93,7 @@ export default function AnalytrickApp() {
     } catch {}
     setData(EMPTY_DATA())
     setLoaded(new Set())
-    setColDefs({
-      anuncios:     [...AN_COLS],
-      categorias:   channel === null ? [...HOME_CAT_COLS] : [...CAT_COLS],
-      marcas:       [...BRAND_COLS],
-      vendedores:   [...USER_COLS],
-      tendencias:   channel === null ? [...HOME_TREND_COLS] : [...TREND_COLS],
-      produtos:     [...PRODUTO_COLS],
-      fornecedores: [...FORNECEDOR_COLS],
-    })
+    setColDefs(INIT_COLS(channel))
   }, [channel])
 
   // ── Tema ─────────────────────────────────────────────────
