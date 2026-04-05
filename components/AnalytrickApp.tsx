@@ -116,7 +116,7 @@ export default function AnalytrickApp() {
       categorias:  {col: channel===null ? 'category' : 'category_tree', asc:true },
       marcas:      {col: channel===null ? 'brand' : 'results', asc: channel===null ? true : false},
       vendedores:  {col:'created_at',    asc:false},
-      produtos:    {col:'created_at',     asc:false},
+      produtos:    {col:'brand',           asc:true },
       fornecedores:{col:'name',          asc:true },
     }
     return m[tab]
@@ -207,7 +207,7 @@ export default function AnalytrickApp() {
       while (true) {
         let q = supabase.from(table).select('*').range(offset, offset + BATCH - 1)
         if (tab==='anuncios') q = q.eq('status','active')
-        q = q.order(col, {ascending:asc, nullsFirst:false})
+        q = q.order(col, {ascending:asc})
         const {data:batch, error} = await q
         if (error) { console.error('Supabase error:', error.message, error.code); break }
         if (!batch?.length) break

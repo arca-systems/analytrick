@@ -204,7 +204,6 @@ export const PRODUTO_COLS: ColDef[] = [
   { key:'alphanumeric_model',label:'MOD. ALFA',   w:'120px', sortable:true,  visible:false },
   { key:'attributes',       label:'ATRIBUTOS',    w:'180px', sortable:false, visible:false },
   { key:'variations',       label:'VARIAÇÕES',    w:'180px', sortable:false, visible:false },
-  { key:'created_at',       label:'CRIADO EM',    w:'110px', sortable:true,  visible:false },
 ]
 
 // ── Fornecedores (sem canal) — tabela: suppliers ─────────────
