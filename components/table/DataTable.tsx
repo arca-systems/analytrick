@@ -388,7 +388,7 @@ export function DataTable({
         {/* DINÂMICA (PIVOT) */}
         {view==='dinamica' && (
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-            {/* Tabela pivot */
+            {/* Tabela pivot */}
             <div style={{flex:1,overflow:'auto',minHeight:0}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed'}}>
                 <colgroup>
