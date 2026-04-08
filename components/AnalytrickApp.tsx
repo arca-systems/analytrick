@@ -586,6 +586,25 @@ export default function AnalytrickApp() {
           animation:'fadeInUp .2s ease',
         }}>{toast}</div>
       )}
+
+      {/* Cadastro / Edição Modal */}
+      {showCadastro && channel === null && (
+        <CadastroModal
+          tabId={activeTab as 'produtos'|'categorias'|'marcas'|'fornecedores'}
+          editRow={editRow}
+          isDark={isDark}
+          brd={brd} txt={txt} txtM={txtM} txtD={txtD} txtVD={txtVD}
+          hbg={hbg} bg={bg} inputBg={inputBg}
+          onClose={() => { setShowCadastro(false); setEditRow(null) }}
+          onSaved={() => {
+            const key = `atk_cache_none:${activeTab}`
+            try { sessionStorage.removeItem(key) } catch {}
+            setLoaded(prev => { const n = new Set(prev); n.delete(`none:${activeTab}`); return n })
+            setData(d => ({ ...d, [activeTab]: [] }))
+          }}
+        />
+      )}
+
       {/* Modal LOG — tela cheia, fiel à extensão */}
       {showLog && (
         <div style={{

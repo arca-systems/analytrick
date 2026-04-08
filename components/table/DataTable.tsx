@@ -129,6 +129,8 @@ export function DataTable({
   const [pvSortCol, setPvSortCol]   = useState('vendas')
   const [pvSortDir, setPvSortDir]   = useState<1|-1>(-1)
   const [selectedRow, setSelectedRow] = useState<Record<string,unknown>|null>(null)
+  // Reset seleção ao mudar página ou filtro
+  React.useEffect(() => { setSelectedRow(null) }, [page, search, sortCol])
   const [dragIdx, setDragIdx]       = useState<number|null>(null)
   const [dragOver, setDragOver]     = useState<number|null>(null)
   const ddRef = useRef<HTMLDivElement>(null)
@@ -350,7 +352,7 @@ export function DataTable({
                 <thead>
                   <tr style={{position:'sticky',top:0,zIndex:10}}>
                     {hasCadastro && isAdmin && (
-                      <th style={{width:32,minWidth:32,background:headerColor,padding:'8px 6px',position:'sticky',left:0,zIndex:16,borderRight:`1px solid rgba(255,255,255,.08)`}}/>
+                      <th style={{width:28,minWidth:28,background:headerColor,padding:'8px 4px',position:'sticky',left:0,zIndex:16,borderRight:`1px solid rgba(255,255,255,.08)`}}/>
                     )}
                     {visCols.map(col => {
                       const isFixed=fixedKeys.has(col.key), isSorted=sortCol===col.key, hasFilter=(filters[col.key]?.size??0)>0
@@ -387,10 +389,11 @@ export function DataTable({
                   {pageRows.map((row,i) => (
                     <tr key={i} style={{outline: selectedRow===row ? '2px solid #3b82f6' : 'none', outlineOffset:-1}}>
                       {hasCadastro && isAdmin && (
-                        <td style={{width:32,minWidth:32,padding:'4px 6px',borderBottom:`1px solid ${brd2}`,textAlign:'center',position:'sticky',left:0,zIndex:4,background:selectedRow===row?(isDark?'#1e3a5f':'#dbeafe'):i%2===0?rowBg:rowAlt}}>
+                        <td style={{width:28,minWidth:28,padding:'4px 4px',borderBottom:`1px solid ${brd2}`,textAlign:'center',position:'sticky',left:0,zIndex:4,background:selectedRow===row?(isDark?'#1e3a5f':'#dbeafe'):i%2===0?rowBg:rowAlt}}>
                           <input type="radio" checked={selectedRow===row}
-                            onChange={()=>setSelectedRow(selectedRow===row?null:row)}
-                            style={{accentColor:'#3b82f6',cursor:'pointer',width:14,height:14}}/>
+                            onChange={()=>{}}
+                            onClick={()=>setSelectedRow(prev=>prev===row?null:row)}
+                            style={{accentColor:'#3b82f6',cursor:'pointer',width:13,height:13}}/>
                         </td>
                       )}
                       {visCols.map(col => {
