@@ -59,6 +59,8 @@ export default function AnalytrickApp() {
   const [toast, setToast]                 = useState<string | null>(null)
   const [logs, setLogs]                   = useState<string[]>([])
   const [showLog, setShowLog]             = useState(false)
+  const [showCadastro, setShowCadastro]   = useState(false)
+  const [editRow, setEditRow]             = useState<Record<string,unknown>|null>(null)
   const [imposto, setImposto]             = useState(0)
   const [roi, setRoi]                     = useState(20)
 
