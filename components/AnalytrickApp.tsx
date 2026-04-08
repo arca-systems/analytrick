@@ -601,6 +601,8 @@ export default function AnalytrickApp() {
             try { sessionStorage.removeItem(key) } catch {}
             setLoaded(prev => { const n = new Set(prev); n.delete(`none:${activeTab}`); return n })
             setData(d => ({ ...d, [activeTab]: [] }))
+            // Força recarregamento imediato
+            setTimeout(() => loadTab(activeTab, true), 100)
           }}
         />
       )}
