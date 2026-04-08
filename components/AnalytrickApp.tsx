@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { DataTable } from '@/components/table/DataTable'
+import CadastroModal from '@/components/CadastroModal'
 import {
   ColDef, CHANNELS, TABS_WITH_CHANNEL, TABS_NO_CHANNEL,
   TabId, Channel, ChannelOption,
@@ -543,6 +544,9 @@ export default function AnalytrickApp() {
                 txt={txt} txtM={txtM} txtD={txtD} txtVD={txtVD}
                 isAdmin={isAdmin}
                 hasDinamica={tab.id==='anuncios'}
+                hasCadastro={channel===null && ['produtos','categorias','marcas','fornecedores'].includes(tab.id)}
+                onCadastrar={()=>{ setEditRow(null); setShowCadastro(true) }}
+                onEditar={row=>{ setEditRow(row); setShowCadastro(true) }}
               />
             </div>
           )

@@ -6,6 +6,10 @@ import { renderCell } from '@/lib/renderCell'
 
 interface DataTableProps {
   hasDinamica?: boolean
+  hasCadastro?: boolean
+  isAdmin?: boolean
+  onCadastrar?: () => void
+  onEditar?: (row: Record<string, unknown>) => void
   rows: Record<string, unknown>[]
   colDefs: ColDef[]
   onColDefsChange: (cols: ColDef[]) => void
@@ -107,6 +111,9 @@ export function DataTable({
   txt='#f9fafb', txtM='#9ca3af', txtD='#6b7280', txtVD='#4b5563',
   isAdmin=false,
   hasDinamica=false,
+  hasCadastro=false,
+  onCadastrar,
+  onEditar,
 }: DataTableProps) {
   const [sortCol, setSortCol]       = useState('')
   const [sortDir, setSortDir]       = useState<1|-1>(-1)
@@ -122,6 +129,7 @@ export function DataTable({
   const [pvExpanded, setPvExpanded] = useState<Set<string>>(new Set())
   const [pvSortCol, setPvSortCol]   = useState('vendas')
   const [pvSortDir, setPvSortDir]   = useState<1|-1>(-1)
+  const [selectedRow, setSelectedRow] = useState<Record<string,unknown>|null>(null)
   const [dragIdx, setDragIdx]       = useState<number|null>(null)
   const [dragOver, setDragOver]     = useState<number|null>(null)
   const ddRef = useRef<HTMLDivElement>(null)
@@ -307,7 +315,23 @@ export function DataTable({
           <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Dinâmica':'Disponível apenas em Anúncios'}>⊞ Dinâmica</button>
           <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>📈 Gráficos</button>
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
-          <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">⬇↑ Dados</button>
+          {hasCadastro && isAdmin ? (
+            <>
+              {selectedRow ? (
+                <button style={{...btnStyle(true), background:'#0369a1', border:'1px solid #0284c7', color:'#fff'}}
+                  onClick={()=>onEditar?.(selectedRow)}>
+                  ✏️ Editar
+                </button>
+              ) : (
+                <button style={{...btnStyle(false), background:'#15803d', border:'1px solid #166534', color:'#fff'}}
+                  onClick={onCadastrar}>
+                  ➕ Cadastrar
+                </button>
+              )}
+            </>
+          ) : (
+            <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">⬇↑ Dados</button>
+          )}
         </div>
       </div>
 
@@ -326,6 +350,9 @@ export function DataTable({
               <table id={tableId} style={{borderCollapse:'collapse',fontSize:11,tableLayout:'fixed',width:'max-content',minWidth:'100%'}}>
                 <thead>
                   <tr style={{position:'sticky',top:0,zIndex:10}}>
+                    {hasCadastro && isAdmin && (
+                      <th style={{width:32,minWidth:32,background:headerColor,padding:'8px 6px',position:'sticky',left:0,zIndex:16,borderRight:`1px solid rgba(255,255,255,.08)`}}/>
+                    )}
                     {visCols.map(col => {
                       const isFixed=fixedKeys.has(col.key), isSorted=sortCol===col.key, hasFilter=(filters[col.key]?.size??0)>0
                       return (
@@ -359,7 +386,14 @@ export function DataTable({
                 </thead>
                 <tbody>
                   {pageRows.map((row,i) => (
-                    <tr key={i}>
+                    <tr key={i} style={{outline: selectedRow===row ? '2px solid #3b82f6' : 'none', outlineOffset:-1}}>
+                      {hasCadastro && isAdmin && (
+                        <td style={{width:32,minWidth:32,padding:'4px 6px',borderBottom:`1px solid ${brd2}`,textAlign:'center',position:'sticky',left:0,zIndex:4,background:selectedRow===row?(isDark?'#1e3a5f':'#dbeafe'):i%2===0?rowBg:rowAlt}}>
+                          <input type="radio" checked={selectedRow===row}
+                            onChange={()=>setSelectedRow(selectedRow===row?null:row)}
+                            style={{accentColor:'#3b82f6',cursor:'pointer',width:14,height:14}}/>
+                        </td>
+                      )}
                       {visCols.map(col => {
                         const isFixed=fixedKeys.has(col.key)
                         return (
