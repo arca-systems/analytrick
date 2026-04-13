@@ -67,9 +67,9 @@ export default function ResetPasswordPage() {
     if (!isValid)           { setError('A senha não atende todos os requisitos.'); return }
     if (password !== confirm) { setError('As senhas não coincidem.'); return }
     setLoading(true)
-    const { error: e } = await supabase.auth.updateUser({ password })
-    if (e) { setError(e.message); setLoading(false) }
-    else   { setSuccess(true); setTimeout(() => router.push('/'), 2500) }
+    const { error: updateErr } = await supabase.auth.updateUser({ password })
+    if (updateErr) { setError(updateErr.message); setLoading(false) }
+    else           { setSuccess(true); setTimeout(() => router.push('/'), 2500) }
   }
 
   const inp = (show: boolean): React.CSSProperties => ({
