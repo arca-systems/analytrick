@@ -20,6 +20,20 @@ interface DataTableProps {
   rowBg?: string
   rowAlt?: string
   hoverBg?: string
+  h2bg?: string
+  brd?: string
+  brd2?: string
+  txt?: string
+  txtM?: string
+  txtD?: string
+  txtVD?: string
+  isAdmin?: boolean
+  hasDinamica?: boolean
+  hasCadastro?: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onCadastrar?: () => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEditar?: (row: any) => void
   onReload?: () => void
 }
 
@@ -40,6 +54,18 @@ export function DataTable({
   rowBg,
   rowAlt,
   hoverBg,
+  h2bg: _h2bg,
+  brd: _brd,
+  brd2: _brd2,
+  txt: _txt,
+  txtM: _txtM,
+  txtD: _txtD,
+  txtVD: _txtVD,
+  isAdmin = false,
+  hasDinamica = false,
+  hasCadastro = false,
+  onCadastrar,
+  onEditar,
   onReload,
 }: DataTableProps) {
   const [cols, setCols]               = useState<ColDef[]>(colDefs)
