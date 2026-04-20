@@ -6,27 +6,43 @@ import { renderCell } from '@/lib/renderCell'
 import { getFilterValue } from '@/lib/getFilterValue'
 
 interface DataTableProps {
-  cols: ColDef[]
-  data: Record<string, unknown>[]
-  isDark: boolean
-  brd: string; txt: string; txtM: string; txtD: string; txtVD: string
-  hbg: string; bg: string; inputBg: string
-  headerBg?: string
-  onColsChange?: (cols: ColDef[]) => void
+  rows: Record<string, unknown>[]
+  colDefs: ColDef[]
+  onColDefsChange: (cols: ColDef[]) => void
+  headerColor?: string
+  headerColorSorted?: string
+  fixedKeys?: Set<string>
+  countLabel?: string
+  tableId?: string
+  loading?: boolean
+  searchKeys?: string[]
+  isDark?: boolean
+  rowBg?: string
+  rowAlt?: string
+  hoverBg?: string
+  onReload?: () => void
 }
 
 const PAGE_SIZE = 100
 
 export function DataTable({
-  cols: initialCols,
-  data,
-  isDark,
-  brd, txt, txtM, txtD, txtVD,
-  hbg, bg, inputBg,
-  headerBg = '#0f766e',
-  onColsChange,
+  rows,
+  colDefs,
+  onColDefsChange,
+  headerColor = '#0f766e',
+  headerColorSorted,
+  fixedKeys = new Set<string>(),
+  countLabel = 'registros',
+  tableId = 'atk-tbl',
+  loading = false,
+  searchKeys = [],
+  isDark = true,
+  rowBg,
+  rowAlt,
+  hoverBg,
+  onReload,
 }: DataTableProps) {
-  const [cols, setCols]               = useState<ColDef[]>(initialCols)
+  const [cols, setCols]               = useState<ColDef[]>(colDefs)
   const [sortKey, setSortKey]         = useState<string | null>(null)
   const [sortDir, setSortDir]         = useState<1 | -1>(1)
   const [filters, setFilters]         = useState<Record<string, Set<string>>>({})
@@ -38,6 +54,21 @@ export function DataTable({
   const [dropSearch, setDropSearch]   = useState('')
   const [selected, setSelected]       = useState<string | null>(null)
 
+  const data = rows  // alias
+
+  // Theme colors derived from isDark
+  const brd    = isDark ? '#374151' : '#e5e7eb'
+  const txt    = isDark ? '#f9fafb' : '#111827'
+  const txtM   = isDark ? '#9ca3af' : '#374151'
+  const txtD   = isDark ? '#6b7280' : '#9ca3af'
+  const txtVD  = isDark ? '#4b5563' : '#9ca3af'
+  const hbg    = isDark ? '#1f2937' : '#ffffff'
+  const inputBg= isDark ? '#0f172a' : '#ffffff'
+  const _rowBg = rowBg  || (isDark ? '#111827' : '#ffffff')
+  const _rowAlt= rowAlt || (isDark ? '#1a2234' : '#f8fafc')
+  const _hoverBg = hoverBg || (isDark ? '#1e3a5f' : '#dbeafe')
+  const headerBg = headerColor
+
   // Drag reorder
   const dragIdx   = useRef<number | null>(null)
   const dragOver  = useRef<number | null>(null)
@@ -45,7 +76,7 @@ export function DataTable({
   const visCols = useMemo(() => cols.filter(c => c.visible), [cols])
 
   // Sync cols when parent pushes new defs
-  useEffect(() => { setCols(initialCols) }, [initialCols])
+  useEffect(() => { setCols(colDefs) }, [colDefs])
 
   // ── Computed filter value (usa getFilterValue) ─────────────
   const getVal = useCallback((row: Record<string, unknown>, key: string): string | number => {
@@ -79,7 +110,10 @@ export function DataTable({
     if (search.trim()) {
       const q = search.toLowerCase()
       rows = rows.filter(r =>
-        Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))
+        (searchKeys.length > 0
+          ? searchKeys.some(k => String(r[k] ?? '').toLowerCase().includes(q))
+          : Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))
+        )
       )
     }
 
@@ -159,7 +193,7 @@ export function DataTable({
   function toggleCol(key: string) {
     setCols(cs => {
       const n = cs.map(c => c.key === key && !c.fixed ? { ...c, visible: !c.visible } : c)
-      onColsChange?.(n)
+      onColDefsChange(n)
       return n
     })
   }
@@ -173,7 +207,7 @@ export function DataTable({
       const n = [...cs]
       const [moved] = n.splice(dragIdx.current!, 1)
       n.splice(dragOver.current!, 0, moved)
-      onColsChange?.(n)
+      onColDefsChange(n)
       return n
     })
     dragIdx.current = null; dragOver.current = null
@@ -225,6 +259,14 @@ export function DataTable({
         <button onClick={() => setShowColMgr(v => !v)} style={{ background: showColMgr ? '#1e3a8a' : 'none', border: `1px solid ${brd}`, borderRadius: 6, color: txtM, cursor: 'pointer', fontSize: 11, padding: '5px 12px', fontFamily: 'inherit', fontWeight: 600 }}>
           ⚙ Colunas
         </button>
+        {onReload && (
+          <button onClick={onReload} style={{ background: 'none', border: `1px solid ${brd}`, borderRadius: 6, color: txtM, cursor: 'pointer', fontSize: 11, padding: '5px 10px', fontFamily: 'inherit', fontWeight: 600 }} title="Recarregar">
+            ↻
+          </button>
+        )}
+        {loading && (
+          <div style={{ width: 14, height: 14, border: `2px solid ${brd}`, borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+        )}
       </div>
 
       {/* ── Main area: table + col manager ── */}
@@ -280,7 +322,7 @@ export function DataTable({
                     key={rowKey}
                     onClick={() => setSelected(s => s === rowKey ? null : rowKey)}
                     style={{
-                      background: isSelected ? (isDark ? '#1e3a5f' : '#dbeafe') : isEven ? (isDark ? '#111827' : '#fff') : (isDark ? '#1a2234' : '#f8fafc'),
+                      background: isSelected ? _hoverBg : isEven ? _rowBg : _rowAlt,
                       cursor: 'pointer',
                     }}
                   >
@@ -420,6 +462,7 @@ export function DataTable({
       {filterDrop && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setFilterDrop(null)} />
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
