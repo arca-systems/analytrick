@@ -17,7 +17,7 @@ interface DataTableProps {
 
 const PAGE_SIZE = 100
 
-export default function DataTable({
+export function DataTable({
   cols: initialCols,
   data,
   isDark,
