@@ -1,494 +1,768 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { ColDef } from '@/lib/colDefs'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { ColDef } from '@/types'
 import { renderCell } from '@/lib/renderCell'
-import { getFilterValue } from '@/lib/getFilterValue'
 
 interface DataTableProps {
+  hasDinamica?: boolean
+  hasCadastro?: boolean
+  isAdmin?: boolean
+  onCadastrar?: () => void
+  onEditar?: (row: Record<string, unknown>) => void
   rows: Record<string, unknown>[]
   colDefs: ColDef[]
   onColDefsChange: (cols: ColDef[]) => void
   headerColor?: string
   headerColorSorted?: string
   fixedKeys?: Set<string>
+  pageSize?: number
   countLabel?: string
   tableId?: string
   loading?: boolean
   searchKeys?: string[]
   isDark?: boolean
-  rowBg?: string
-  rowAlt?: string
-  hoverBg?: string
-  h2bg?: string
-  brd?: string
-  brd2?: string
-  txt?: string
-  txtM?: string
-  txtD?: string
-  txtVD?: string
+  rowBg?: string; rowAlt?: string; hoverBg?: string
+  h2bg?: string; brd?: string; brd2?: string
+  txt?: string; txtM?: string; txtD?: string; txtVD?: string
   isAdmin?: boolean
-  hasDinamica?: boolean
-  hasCadastro?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onCadastrar?: () => void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onEditar?: (row: any) => void
-  onReload?: () => void
 }
 
-const PAGE_SIZE = 100
+type View = 'analitica' | 'dinamica' | 'graficos'
+
+const PV_VIEWS = [
+  { id:'marca',     lbl1:'MARCA',       lbl2:'MODELO',
+    key1:(p:Record<string,unknown>) => String(p.attributes_brand||p.brand||'(sem marca)'),
+    key2:(p:Record<string,unknown>) => String(p.attributes_model||'(sem modelo)') },
+  { id:'categoria', lbl1:'CATEG. PAI',  lbl2:'CATEGORIA',
+    key1:(p:Record<string,unknown>) => String(p.category_parent||'(sem categ. pai)'),
+    key2:(p:Record<string,unknown>) => String(p.category_name||'(sem categoria)') },
+  { id:'loja',      lbl1:'LOJA OFICIAL',lbl2:'APELIDO',
+    key1:(p:Record<string,unknown>) => String(p.official_store||'(sem loja oficial)'),
+    key2:(p:Record<string,unknown>) => String(p.seller_name||'(sem apelido)') },
+  { id:'estado',    lbl1:'ESTADO',      lbl2:'CIDADE',
+    key1:(p:Record<string,unknown>) => String(p.address_state||'(sem estado)'),
+    key2:(p:Record<string,unknown>) => String(p.address_city||'(sem cidade)') },
+  { id:'reputacao', lbl1:'REPUTA├ç├âO',   lbl2:'MEDALHA',
+    key1:(p:Record<string,unknown>) => String(p.reputation_level||'(sem reputa├º├úo)'),
+    key2:(p:Record<string,unknown>) => String(p.power_seller_status||'(sem medalha)') },
+  { id:'modo',      lbl1:'MODO',        lbl2:'LOG├ìSTICA',
+    key1:(p:Record<string,unknown>) => {
+      const m = String(p.shipping_mode||'(sem modo)')
+      if (m==='me1'||m==='ME1') return 'ME1'; if (m==='me2'||m==='ME2') return 'ME2'; return m
+    },
+    key2:(p:Record<string,unknown>) => {
+      const l = String(p.shipping_logistic_type||'(sem log├¡stica)')
+      if (l==='fulfillment'||l==='FULL') return 'ME FULL'
+      if (l==='cross_docking') return 'ME PLACES'
+      if (l==='xd_drop_off')   return 'ME COLETA'
+      if (l==='drop_off')      return 'MERCADO ENVIOS'
+      if (l==='not_specified') return 'N/A'
+      return l
+    } },
+]
+
+function fmtR(v:number) { if (!v && v!==0) return '—'; const abs=Math.abs(v); const fmt=abs.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); return (v<0?'-':'')+'R$\u00a0'+fmt }
+function fmtN(v:number) { return v!=null ? v.toLocaleString('pt-BR') : '—' }
+
+// Retorna valor traduzido para uso no filtro dropdown
+function getFilterValue(row:Record<string,unknown>, key:string): string {
+  const v = row[key]
+  switch(key) {
+    case 'listing': {
+      if (row.catalog_product_id) return 'PRODUTO CATÁLOGO'
+      if (row.user_product_id) return 'PRODUTO USUÁRIO'
+      return String(v||'TRADICIONAL')
+    }
+    case 'listing_type': {
+      const id = String(row.listing_type_id||'')
+      if (id==='gold_pro') return 'Premium'
+      if (id==='gold_special') return 'Clássico'
+      if (id==='free') return 'Grátis'
+      return String(v||'—')
+    }
+    case 'shipping_free_shipping':
+      return (v===true||v==='true') ? 'GRÁTIS' : 'Pago'
+    case 'shipping_logistic_type': {
+      const l = String(v||'')
+      if (l==='fulfillment'||l==='FULL') return 'ME FULL'
+      if (l==='cross_docking') return 'ME COLETA'
+      if (l==='xd_drop_off') return 'ME PLACES'
+      if (l==='drop_off') return 'MERCADO ENVIOS'
+      if (l==='not_specified') return 'N/A'
+      return l||'—'
+    }
+    case 'shipping_mode': {
+      const m = String(v||'')
+      if (m==='me1'||m==='ME1') return 'ME1'
+      if (m==='me2'||m==='ME2') return 'ME2'
+      return m.toUpperCase()||'—'
+    }
+    case 'power_seller_status': {
+      const medals:Record<string,string> = {gold:'Gold',silver:'Silver',platinum:'Platinum'}
+      return v ? (medals[String(v)]||String(v)) : '—'
+    }
+    case 'item_condition':
+      return v ? (/usado|recondicionado|seminovo/i.test(String(v)) ? String(v) : 'Novo') : '—'
+    case 'listing_allowed':
+      return (v===true||v==='true') ? 'Sim' : 'Não'
+    default:
+      return v!=null&&v!=='' ? String(v) : '—'
+  }
+}
+
+function buildPivotData(rows:Record<string,unknown>[], pvView:string) {
+  const vw = PV_VIEWS.find(v => v.id===pvView) || PV_VIEWS[0]
+  const map = new Map<string, {
+    k1:string; sub:Map<string,{k2:string;anuncios:number;sellerSet:Set<string>;prices:number[];vendas:number;receita:number;rows:Record<string,unknown>[];sellers:number;price_min:number;price_max:number;price_med:number;ticket:number;vs:number}>;
+    anuncios:number;sellerSet:Set<string>;prices:number[];vendas:number;receita:number;
+    sellers:number;price_min:number;price_max:number;price_med:number;ticket:number;vs:number;
+  }>()
+  rows.forEach(p => {
+    const k1 = vw.key1(p), k2 = vw.key2(p)
+    if (!map.has(k1)) map.set(k1, {k1,sub:new Map(),anuncios:0,sellerSet:new Set(),prices:[],vendas:0,receita:0,sellers:0,price_min:0,price_max:0,price_med:0,ticket:0,vs:0})
+    const g = map.get(k1)!
+    if (!g.sub.has(k2)) g.sub.set(k2, {k2,anuncios:0,sellerSet:new Set(),prices:[],vendas:0,receita:0,rows:[],sellers:0,price_min:0,price_max:0,price_med:0,ticket:0,vs:0})
+    const s = g.sub.get(k2)!
+    s.rows.push(p); s.anuncios++
+    const sid = String(p.seller_id||''); if (sid) { s.sellerSet.add(sid); g.sellerSet.add(sid) }
+    const pr = parseFloat(String(p.price||0)); if (pr>0) { s.prices.push(pr); g.prices.push(pr) }
+    const vn = Number(p.sold_quantity||0), rc = Number(p.receita||0)
+    s.vendas+=vn; s.receita+=rc; g.vendas+=vn; g.receita+=rc; g.anuncios++
+  })
+  function calc(g:{prices:number[];sellerSet:Set<string>;vendas:number;anuncios:number;sellers:number;price_min:number;price_max:number;price_med:number;ticket:number;vs:number}) {
+    const sorted=[...g.prices].sort((a,b)=>a-b)
+    const mid=Math.floor(sorted.length/2)
+    g.sellers=g.sellerSet.size
+    g.price_min=sorted.length?sorted[0]:0
+    g.price_max=sorted.length?sorted[sorted.length-1]:0
+    g.price_med=sorted.length?sorted.reduce((a,b)=>a+b,0)/sorted.length:0
+    g.ticket=sorted.length?(sorted.length%2===0?(sorted[mid-1]+sorted[mid])/2:sorted[mid]):0
+    g.vs=g.sellers>0?g.vendas/g.sellers:0
+  }
+  const arr=[...map.values()]
+  arr.forEach(g=>{calc(g);g.sub.forEach(s=>calc(s))})
+  arr.sort((a,b)=>b.vendas-a.vendas)
+  return arr
+}
 
 export function DataTable({
-  rows,
-  colDefs,
-  onColDefsChange,
-  headerColor = '#0f766e',
-  headerColorSorted,
-  fixedKeys = new Set<string>(),
-  countLabel = 'registros',
-  tableId = 'atk-tbl',
-  loading = false,
-  searchKeys = [],
-  isDark = true,
-  rowBg,
-  rowAlt,
-  hoverBg,
-  h2bg: _h2bg,
-  brd: _brd,
-  brd2: _brd2,
-  txt: _txt,
-  txtM: _txtM,
-  txtD: _txtD,
-  txtVD: _txtVD,
-  isAdmin = false,
-  hasDinamica = false,
-  hasCadastro = false,
+  rows, colDefs, onColDefsChange,
+  headerColor='#2563eb', headerColorSorted='#1d4ed8',
+  fixedKeys=new Set(), pageSize=100,
+  countLabel='registros', tableId='atk-tbl',
+  loading=false, searchKeys=[], isDark=true,
+  rowBg='#111827', rowAlt='#1a2234', hoverBg='#1e3a5f',
+  h2bg='#111827', brd='#374151', brd2='#2d3748',
+  txt='#f9fafb', txtM='#9ca3af', txtD='#6b7280', txtVD='#4b5563',
+  isAdmin=false,
+  hasDinamica=false,
+  hasCadastro=false,
   onCadastrar,
   onEditar,
-  onReload,
 }: DataTableProps) {
-  const [cols, setCols]               = useState<ColDef[]>(colDefs)
-  const [sortKey, setSortKey]         = useState<string | null>(null)
-  const [sortDir, setSortDir]         = useState<1 | -1>(1)
-  const [filters, setFilters]         = useState<Record<string, Set<string>>>({})
-  const [page, setPage]               = useState(1)
-  const [search, setSearch]           = useState('')
-  const [showColMgr, setShowColMgr]   = useState(false)
-  const [filterDrop, setFilterDrop]   = useState<{ key: string; anchor: DOMRect } | null>(null)
-  const [tempSel, setTempSel]         = useState<Set<string>>(new Set())
-  const [dropSearch, setDropSearch]   = useState('')
-  const [selected, setSelected]       = useState<string | null>(null)
+  const [sortCol, setSortCol]       = useState('')
+  const [sortDir, setSortDir]       = useState<1|-1>(-1)
+  const [filters, setFilters]       = useState<Record<string,Set<string>>>({})
+  const [page, setPage]             = useState(1)
+  const [search, setSearch]         = useState('')
+  const [dropdown, setDropdown]     = useState<{key:string;rect:DOMRect}|null>(null)
+  const [tempFilter, setTempFilter] = useState<Set<string>>(new Set())
+  const [filterSearch, setFilterSearch] = useState('')
+  const [showCols, setShowCols]     = useState(false)
+  const [view, setView]             = useState<View>('analitica')
+  const [pvView, setPvView]         = useState('marca')
+  const [pvExpanded, setPvExpanded] = useState<Set<string>>(new Set())
+  const [pvSortCol, setPvSortCol]   = useState('vendas')
+  const [pvSortDir, setPvSortDir]   = useState<1|-1>(-1)
+  const [selectedRow, setSelectedRow] = useState<Record<string,unknown>|null>(null)
+  const [dragIdx, setDragIdx]       = useState<number|null>(null)
+  const [dragOver, setDragOver]     = useState<number|null>(null)
+  const ddRef = useRef<HTMLDivElement>(null)
 
-  const data = rows  // alias
+  const visCols = colDefs.filter(c => c.visible || fixedKeys.has(c.key))
 
-  // Theme colors derived from isDark
-  const brd    = isDark ? '#374151' : '#e5e7eb'
-  const txt    = isDark ? '#f9fafb' : '#111827'
-  const txtM   = isDark ? '#9ca3af' : '#374151'
-  const txtD   = isDark ? '#6b7280' : '#9ca3af'
-  const txtVD  = isDark ? '#4b5563' : '#9ca3af'
-  const hbg    = isDark ? '#1f2937' : '#ffffff'
-  const inputBg= isDark ? '#0f172a' : '#ffffff'
-  const _rowBg = rowBg  || (isDark ? '#111827' : '#ffffff')
-  const _rowAlt= rowAlt || (isDark ? '#1a2234' : '#f8fafc')
-  const _hoverBg = hoverBg || (isDark ? '#1e3a5f' : '#dbeafe')
-  const headerBg = headerColor
+  // Sticky left
+  const stickyLeft: Record<string,number> = {}
+  let leftAcc = 0
+  visCols.filter(c => fixedKeys.has(c.key)).forEach(c => {
+    stickyLeft[c.key] = leftAcc; leftAcc += parseInt(c.w)||90
+  })
 
-  // Drag reorder
-  const dragIdx   = useRef<number | null>(null)
-  const dragOver  = useRef<number | null>(null)
-
-  const visCols = useMemo(() => cols.filter(c => c.visible), [cols])
-
-  // Sync cols when parent pushes new defs
-  useEffect(() => { setCols(colDefs) }, [colDefs])
-
-  // ── Computed filter value (usa getFilterValue) ─────────────
-  const getVal = useCallback((row: Record<string, unknown>, key: string): string | number => {
-    return getFilterValue(row as Record<string, unknown>, key)
-  }, [])
-
-  // ── Unique values for filter dropdown (already translated) ──
-  const uniqueVals = useCallback((key: string): (string | number)[] => {
-    const col = cols.find(c => c.key === key)
-    const isNum = col?.numeric ?? false
-    const set = new Set<string | number>()
-    data.forEach(row => {
-      const v = getVal(row, key)
-      if (v !== '—' && v !== '' && v != null) set.add(v)
-    })
-    const arr = Array.from(set)
-    if (isNum) {
-      return arr
-        .map(v => (typeof v === 'string' ? parseFloat(v) : v))
-        .filter(v => !isNaN(v as number))
-        .sort((a, b) => (a as number) - (b as number))
-    }
-    return arr.sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'))
-  }, [data, cols, getVal])
-
-  // ── Sort + filter + search ─────────────────────────────────
-  const processed = useMemo(() => {
-    let rows = [...data]
-
-    // search
-    if (search.trim()) {
+  // Filter+sort
+  const filtered = React.useMemo(() => {
+    let r = rows
+    if (search && searchKeys.length) {
       const q = search.toLowerCase()
-      rows = rows.filter(r =>
-        (searchKeys.length > 0
-          ? searchKeys.some(k => String(r[k] ?? '').toLowerCase().includes(q))
-          : Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))
-        )
-      )
+      r = r.filter(row => searchKeys.some(k => String(row[k]??'').toLowerCase().includes(q)))
     }
+    if (Object.keys(filters).length) {
+      r = r.filter(row => Object.entries(filters).every(([k,vals]) => !vals.size||vals.has(getFilterValue(row,k))))
+    }
+    return r
+  }, [rows, search, filters, searchKeys])
 
-    // column filters — compare against translated value
-    Object.entries(filters).forEach(([key, sel]) => {
-      if (!sel.size) return
-      rows = rows.filter(r => {
-        const v = getVal(r, key)
-        return sel.has(String(v))
-      })
+  const sorted = React.useMemo(() => {
+    if (!sortCol) return filtered
+    return [...filtered].sort((a,b) => {
+      const av=a[sortCol],bv=b[sortCol]
+      const an=parseFloat(String(av)),bn=parseFloat(String(bv))
+      if (!isNaN(an)&&!isNaN(bn)) return (an-bn)*sortDir
+      return String(av??'').localeCompare(String(bv??''),'pt-BR')*sortDir
     })
+  }, [filtered, sortCol, sortDir])
 
-    // sort
-    if (sortKey) {
-      const col = cols.find(c => c.key === sortKey)
-      const isNum = col?.numeric ?? false
-      rows.sort((a, b) => {
-        const av = isNum
-          ? (parseFloat(String(a[sortKey] ?? '')) || -Infinity)
-          : String(a[sortKey] ?? '').toLowerCase()
-        const bv = isNum
-          ? (parseFloat(String(b[sortKey] ?? '')) || -Infinity)
-          : String(b[sortKey] ?? '').toLowerCase()
-        if (av < bv) return -1 * sortDir
-        if (av > bv) return  1 * sortDir
-        return 0
-      })
+  const totalPages = Math.ceil(sorted.length/pageSize)
+  const pageRows   = sorted.slice((page-1)*pageSize, page*pageSize)
+  const hasFilters = Object.values(filters).some(s=>s.size>0)||search.length>0
+
+  function handleThClick(e:React.MouseEvent<HTMLTableCellElement>, col:ColDef) {
+    // thumbnail: sem sort, sem filtro
+    if (col.key === 'thumbnail') return
+    if (e.ctrlKey||e.metaKey) {
+      // title: sem filtro
+      if (col.key === 'title') return
+      const rect = e.currentTarget.getBoundingClientRect()
+      setTempFilter(new Set(filters[col.key]??[]))
+      setFilterSearch(''); setDropdown({key:col.key,rect})
+    } else {
+      if (sortCol===col.key) setSortDir(d=>d===1?-1:1)
+      else { setSortCol(col.key); setSortDir(-1) }
+      setPage(1)
     }
-
-    return rows
-  }, [data, search, filters, sortKey, sortDir, cols, getVal])
-
-  const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE))
-  const pageData   = processed.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  function handleSort(key: string) {
-    const col = cols.find(c => c.key === key)
-    if (!col?.sortable) return
-    if (sortKey === key) setSortDir(d => (d === 1 ? -1 : 1))
-    else { setSortKey(key); setSortDir(-1) }
-    setPage(1)
   }
 
-  function openFilter(key: string, anchor: DOMRect) {
-    const sel = filters[key] || new Set<string>()
-    setTempSel(new Set(sel))
-    setDropSearch('')
-    setFilterDrop({ key, anchor })
-  }
-
+  function clearAll() { setFilters({}); setSearch(''); setPage(1) }
   function applyFilter() {
-    if (!filterDrop) return
-    setFilters(f => {
-      const n = { ...f }
-      if (tempSel.size === 0) delete n[filterDrop.key]
-      else n[filterDrop.key] = new Set(tempSel)
-      return n
-    })
-    setFilterDrop(null)
-    setPage(1)
+    if (!dropdown) return
+    setFilters(f => { const n={...f}; if (!tempFilter.size) delete n[dropdown.key]; else n[dropdown.key]=new Set(tempFilter); return n })
+    setDropdown(null); setPage(1)
   }
-
   function clearFilter() {
-    if (!filterDrop) return
-    setFilters(f => { const n = { ...f }; delete n[filterDrop.key]; return n })
-    setFilterDrop(null)
-    setPage(1)
+    if (!dropdown) return
+    setFilters(f => { const n={...f}; delete n[dropdown.key]; return n })
+    setDropdown(null); setPage(1)
   }
 
-  function clearAllFilters() {
-    setFilters({})
-    setSearch('')
-    setPage(1)
+  useEffect(() => {
+    if (!dropdown) return
+    const handler = (e:MouseEvent) => {
+      if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDropdown(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [dropdown])
+
+  const uniqueVals = dropdown
+    ? [...new Set(rows.map(r=>getFilterValue(r,dropdown.key)))].filter(v=>v!=='—'&&(!filterSearch||String(v).toLowerCase().includes(filterSearch.toLowerCase()))).sort()
+    : []
+
+  function downloadCSV() {
+    const hdr = visCols.map(c=>c.label).join(';')
+    const csv = sorted.map(row=>visCols.map(c=>{const v=row[c.key];return v==null?'':'"'+String(v).replace(/"/g,'""')+'"'}).join(';'))
+    const blob = new Blob(['\uFEFF'+[hdr,...csv].join('\n')],{type:'text/csv;charset=utf-8'})
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href=url; a.download=`analytrick-${tableId}.csv`; a.click()
+    URL.revokeObjectURL(url)
   }
 
-  // ── Col manager ───────────────────────────────────────────
-  function toggleCol(key: string) {
-    setCols(cs => {
-      const n = cs.map(c => c.key === key && !c.fixed ? { ...c, visible: !c.visible } : c)
-      onColDefsChange(n)
-      return n
+  // Drag to reorder columns
+  function onDragStart(idx:number) { setDragIdx(idx) }
+  function onDragOver(e:React.DragEvent, idx:number) { e.preventDefault(); setDragOver(idx) }
+  function onDrop(idx:number) {
+    if (dragIdx===null||dragIdx===idx) { setDragIdx(null); setDragOver(null); return }
+    const next = [...colDefs]
+    const [moved] = next.splice(dragIdx, 1)
+    next.splice(idx, 0, moved)
+    onColDefsChange(next)
+    setDragIdx(null); setDragOver(null)
+  }
+
+  // Pivot data
+  const pivotData = React.useMemo(() => {
+    if (view !== 'dinamica') return []
+    const data = buildPivotData(rows, pvView)
+    return [...data].sort((a,b) => {
+      const av = (a as Record<string,unknown>)[pvSortCol]
+      const bv = (b as Record<string,unknown>)[pvSortCol]
+      const an = parseFloat(String(av??0)), bn = parseFloat(String(bv??0))
+      if (!isNaN(an) && !isNaN(bn)) return (an - bn) * pvSortDir
+      return String(av??'').localeCompare(String(bv??''), 'pt-BR') * pvSortDir
     })
-  }
+  }, [view, pvView, rows, pvSortCol, pvSortDir])
 
-  function onDragStart(i: number) { dragIdx.current = i }
-  function onDragEnter(i: number) { dragOver.current = i }
-  function onDragEnd() {
-    if (dragIdx.current === null || dragOver.current === null) return
-    if (dragIdx.current === dragOver.current) return
-    setCols(cs => {
-      const n = [...cs]
-      const [moved] = n.splice(dragIdx.current!, 1)
-      n.splice(dragOver.current!, 0, moved)
-      onColDefsChange(n)
-      return n
-    })
-    dragIdx.current = null; dragOver.current = null
-  }
+  const pvTotals = React.useMemo(() => {
+    if (!pivotData.length) return null
+    const allPrices = rows.map(r=>parseFloat(String(r.price||0))).filter(v=>v>0).sort((a,b)=>a-b)
+    const mid = Math.floor(allPrices.length/2)
+    return {
+      anuncios: rows.length,
+      sellers: new Set(rows.map(r=>String(r.seller_id||'')).filter(Boolean)).size,
+      vendas: rows.reduce((s,r)=>s+Number(r.sold_quantity||0),0),
+      receita: rows.reduce((s,r)=>s+Number(r.receita||0),0),
+      price_min: allPrices[0]||0,
+      price_max: allPrices[allPrices.length-1]||0,
+      price_med: allPrices.length?allPrices.reduce((a,b)=>a+b,0)/allPrices.length:0,
+      ticket: allPrices.length?(allPrices.length%2===0?(allPrices[mid-1]+allPrices[mid])/2:allPrices[mid]):0,
+    }
+  }, [pivotData, rows])
 
-  // ── Styles ────────────────────────────────────────────────
-  const thStyle = (key: string, w: string): React.CSSProperties => ({
-    background: sortKey === key ? (isDark ? '#134e4a' : '#0d9488') : headerBg,
-    color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '.4px',
-    padding: '7px 8px', textAlign: 'left', whiteSpace: 'nowrap',
-    position: 'sticky', top: 0, zIndex: 2,
-    minWidth: w, maxWidth: w, width: w,
-    userSelect: 'none', cursor: 'pointer',
-    borderRight: `1px solid ${headerBg}88`,
+  const btnStyle = (active=false): React.CSSProperties => ({
+    height:28, padding:'0 10px', borderRadius:5, fontSize:11, fontWeight:600,
+    cursor:'pointer', fontFamily:'inherit',
+    display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap',
+    background: active ? '#1e3a8a' : isDark ? '#374151' : '#e5e7eb',
+    color: active ? '#fff' : isDark ? '#d1d5db' : '#374151',
+    border: active ? '1px solid #163470' : `1px solid ${brd2}`,
+    transition:'background .15s',
   })
-
-  const tdStyle = (key: string): React.CSSProperties => ({
-    padding: '5px 8px', fontSize: 11,
-    borderBottom: `1px solid ${brd}`,
-    // title: white-space normal (quebra linha)
-    whiteSpace: key === 'title' ? 'normal' : 'nowrap',
-    lineHeight: key === 'title' ? '1.4' : undefined,
-    overflow: key === 'title' ? 'visible' : 'hidden',
-    textOverflow: key === 'title' ? 'clip' : 'ellipsis',
-    verticalAlign: 'top',
-  })
-
-  const activeFilters = Object.keys(filters).filter(k => filters[k]?.size > 0)
+  const dlBtn: React.CSSProperties = {
+    ...btnStyle(false), background:'#fff', color:'#1e3a8a', fontWeight:700, border:'1px solid #c7d2fe',
+  }
+  const pvColStyle: React.CSSProperties = {
+    padding:'8px 10px', fontSize:10, fontWeight:700, color:'#fff',
+    whiteSpace:'nowrap', borderRight:'1px solid rgba(255,255,255,.08)', cursor:'pointer',
+    background:headerColor, position:'sticky', top:0, zIndex:10,
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden',minHeight:0}}>
 
-      {/* ── H2: search + info + buttons ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', flexShrink: 0, flexWrap: 'wrap', borderBottom: `1px solid ${brd}` }}>
-        <input
-          value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-          placeholder="🔍 Buscar..."
-          style={{ background: inputBg, border: `1px solid ${brd}`, borderRadius: 6, color: txt, fontSize: 11, padding: '5px 10px', fontFamily: 'inherit', outline: 'none', width: 180 }}
-        />
-        <span style={{ fontSize: 11, color: txtD }}>
-          {processed.length.toLocaleString('pt-BR')} registros
-        </span>
-        {activeFilters.length > 0 && (
-          <button onClick={clearAllFilters} style={{ background: 'rgba(239,68,68,.15)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 6, color: '#f87171', cursor: 'pointer', fontSize: 10, padding: '4px 10px', fontFamily: 'inherit', fontWeight: 700 }}>
-            ✕ Limpar {activeFilters.length} filtro{activeFilters.length > 1 ? 's' : ''}
-          </button>
+      {/* ÔòÉÔòÉ H2 toolbar ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      <div style={{display:'flex',alignItems:'center',height:38,flexShrink:0,background:h2bg,borderBottom:`2px solid ${brd2}`,padding:'0 10px',gap:6}}>
+        {/* Esquerda: busca + count */}
+        <div style={{display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0,overflow:'hidden'}}>
+          {view!=='dinamica' && searchKeys.length>0 && (
+            <input type="text" placeholder="­ƒöì Buscar..."
+              value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
+              style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
+            />
+          )}
+          <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
+            {view==='dinamica'
+              ? `${pivotData.length} grupos ┬À ${rows.length.toLocaleString('pt-BR')} itens`
+              : `${sorted.length.toLocaleString('pt-BR')} ${countLabel}${hasFilters?' ÔùÅ filtrado':''}`
+            }
+          </span>
+        </div>
+        {/* Direita: bot├Áes */}
+        <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
+          {view!=='dinamica' && <>
+            <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">Ô£ò Filtros</button>
+            <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">Ôè× Colunas</button>
+          </>}
+          {/* Seletor de agrupamento — aparece ao lado de Anal├¡tica quando Din├ómica est├í ativa */}
+          {view==='dinamica' && (
+            <select value={pvView} onChange={e=>setPvView(e.target.value)}
+              style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600,marginRight:4}}>
+              {PV_VIEWS.map(v=>(
+                <option key={v.id} value={v.id}>{v.lbl1} / {v.lbl2}</option>
+              ))}
+            </select>
+          )}
+          <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
+          <button style={btnStyle(view==='analitica')} onClick={()=>setView('analitica')}>Ôëí Anal├¡tica</button>
+          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Din├ómica':'Dispon├¡vel apenas em An├║ncios'}>Ôè× Din├ómica</button>
+          <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>­ƒôê Gr├íficos</button>
+          <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
+          {hasCadastro && isAdmin ? (
+            <>
+              {selectedRow ? (
+                <button style={{...btnStyle(true), background:'#0369a1', border:'1px solid #0284c7', color:'#fff'}}
+                  onClick={()=>onEditar?.(selectedRow)}>
+                  Ô£Å´©Å Editar
+                </button>
+              ) : (
+                <button style={{...btnStyle(false), background:'#15803d', border:'1px solid #166534', color:'#fff'}}
+                  onClick={onCadastrar}>
+                  Ô×ò Cadastrar
+                </button>
+              )}
+            </>
+          ) : (
+            <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">Ô¼çÔåæ Dados</button>
+          )}
+        </div>
+      </div>
+
+      {/* ÔòÉÔòÉ Conte├║do por view ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      <div style={{flex:1,overflow:'hidden',minHeight:0,display:'flex',flexDirection:'column'}}>
+
+        {/* ANAL├ìTICA */}
+        {view==='analitica' && (
+          <div style={{flex:1,overflow:'auto',minHeight:0}}>
+            {loading ? (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',gap:12}}>
+                <div style={{width:28,height:28,border:'3px solid #374151',borderTopColor:'#3b82f6',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+                <span style={{color:txtD,fontSize:13}}>Carregando...</span>
+              </div>
+            ) : (
+              <table id={tableId} style={{borderCollapse:'collapse',fontSize:11,tableLayout:'fixed',width:'max-content',minWidth:'100%'}}>
+                <thead>
+                  <tr style={{position:'sticky',top:0,zIndex:10}}>
+                    {hasCadastro && isAdmin && (
+                      <th style={{width:32,minWidth:32,background:headerColor,padding:'8px 6px',position:'sticky',left:0,zIndex:16,borderRight:`1px solid rgba(255,255,255,.08)`}}/>
+                    )}
+                    {visCols.map(col => {
+                      const isFixed=fixedKeys.has(col.key), isSorted=sortCol===col.key, hasFilter=(filters[col.key]?.size??0)>0
+                      return (
+                        <th key={col.key} data-key={col.key}
+                          title="1 clique = ordenar ┬À Ctrl+clique = filtrar"
+                          onClick={e=>handleThClick(e,col)}
+                          style={{
+                            minWidth:col.w,maxWidth:col.w,width:col.w,
+                            background:isSorted?headerColorSorted:headerColor,
+                            position:isFixed?'sticky':undefined,
+                            left:isFixed?stickyLeft[col.key]:undefined,
+                            zIndex:isFixed?15:undefined,
+                            padding:'8px 10px',textAlign:'left',
+                            fontSize:10,fontWeight:700,color:'#fff',
+                            whiteSpace:'nowrap',letterSpacing:'.4px',
+                            userSelect:'none',cursor:'pointer',
+                            borderRight:'1px solid rgba(255,255,255,.08)',
+                          }}>
+                          <div style={{display:'flex',alignItems:'center',gap:3,overflow:'hidden'}}>
+                            <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{col.label}</span>
+                            <span style={{flexShrink:0}}>
+                              {hasFilter && <span style={{color:'#fbbf24'}}>Ôû╝</span>}
+                              {isSorted && <span>{sortDir===1?'Ôåæ':'Ôåô'}</span>}
+                              {!isSorted&&!hasFilter&&col.sortable && <span style={{opacity:.35,fontSize:9}}>Ôåò</span>}
+                            </span>
+                          </div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map((row,i) => (
+                    <tr key={i} style={{outline: selectedRow===row ? '2px solid #3b82f6' : 'none', outlineOffset:-1}}>
+                      {hasCadastro && isAdmin && (
+                        <td style={{width:32,minWidth:32,padding:'4px 6px',borderBottom:`1px solid ${brd2}`,textAlign:'center',position:'sticky',left:0,zIndex:4,background:selectedRow===row?(isDark?'#1e3a5f':'#dbeafe'):i%2===0?rowBg:rowAlt}}>
+                          <input type="radio" checked={selectedRow===row}
+                            onChange={()=>setSelectedRow(selectedRow===row?null:row)}
+                            style={{accentColor:'#3b82f6',cursor:'pointer',width:14,height:14}}/>
+                        </td>
+                      )}
+                      {visCols.map(col => {
+                        const isFixed=fixedKeys.has(col.key)
+                        return (
+                          <td key={col.key} data-key={col.key} style={{
+                            minWidth:col.w,maxWidth:col.w,width:col.w,
+                            position:isFixed?'sticky':undefined,
+                            left:isFixed?stickyLeft[col.key]:undefined,
+                            zIndex:isFixed?5:undefined,
+                            padding:'7px 10px',borderBottom:`1px solid ${brd2}`,
+                            verticalAlign:'middle',overflow:'hidden',
+                            whiteSpace: col.key==='title' ? 'normal' : 'nowrap',
+                            textOverflow: col.key==='title' ? 'clip' : 'ellipsis',
+                          }}>
+                            {renderCell(row as Record<string,unknown>, col.key)}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                  {pageRows.length===0 && (
+                    <tr><td colSpan={visCols.length} style={{textAlign:'center',padding:40,color:txtD}}>Nenhum resultado</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
-        <div style={{ flex: 1 }} />
-        <button onClick={() => setShowColMgr(v => !v)} style={{ background: showColMgr ? '#1e3a8a' : 'none', border: `1px solid ${brd}`, borderRadius: 6, color: txtM, cursor: 'pointer', fontSize: 11, padding: '5px 12px', fontFamily: 'inherit', fontWeight: 600 }}>
-          ⚙ Colunas
-        </button>
-        {onReload && (
-          <button onClick={onReload} style={{ background: 'none', border: `1px solid ${brd}`, borderRadius: 6, color: txtM, cursor: 'pointer', fontSize: 11, padding: '5px 10px', fontFamily: 'inherit', fontWeight: 600 }} title="Recarregar">
-            ↻
-          </button>
+
+        {/* DIN├éMICA (PIVOT) */}
+        {view==='dinamica' && (
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+            {/* Tabela pivot */}
+            <div style={{flex:1,overflow:'auto',minHeight:0}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed'}}>
+                <colgroup>
+                  <col style={{width:'28%'}}/><col style={{width:'72px'}}/><col style={{width:'65px'}}/>
+                  <col style={{width:'85px'}}/><col style={{width:'85px'}}/><col style={{width:'85px'}}/>
+                  <col style={{width:'85px'}}/><col style={{width:'80px'}}/><col style={{width:'110px'}}/>
+                  <col style={{width:'72px'}}/><col style={{width:'72px'}}/>
+                </colgroup>
+                <thead>
+                  <tr>
+                    {[{k:'k1',l:PV_VIEWS.find(v=>v.id===pvView)?.lbl1||'GRUPO',align:'left'},{k:'anuncios',l:'AN├ÜNCIOS',align:'right'},{k:'sellers',l:'SELLERS',align:'right'},{k:'price_min',l:'PRE├çO MIN',align:'right'},{k:'price_med',l:'PRE├çO MED',align:'right'},{k:'price_max',l:'PRE├çO MAX',align:'right'},{k:'ticket',l:'TICKET',align:'right'},{k:'vendas',l:'VENDAS',align:'right'},{k:'receita',l:'RECEITA',align:'right'},{k:'vs',l:'V/S',align:'right',title:'Vendas / Sellers'},{k:'as',l:'A/S',align:'right',title:'An├║ncios / Sellers'}].map((col,ci)=>{
+                      const isSorted=pvSortCol===col.k
+                      return (
+                        <th key={col.k}
+                          title={col.title||col.l}
+                          onClick={()=>{if(col.k==='k1')return;if(pvSortCol===col.k)setPvSortDir(d=>d===1?-1:1);else{setPvSortCol(col.k);setPvSortDir(-1)}}}
+                          style={{...pvColStyle,textAlign:col.align as 'left'|'right',background:isSorted?headerColorSorted:headerColor,cursor:col.k==='k1'?'default':'pointer'}}>
+                          <span>{col.l}</span>
+                          {isSorted && <span style={{marginLeft:3,fontSize:9}}>{pvSortDir===1?'Ôåæ':'Ôåô'}</span>}
+                          {!isSorted && col.k!=='k1' && <span style={{opacity:.35,fontSize:9,marginLeft:3}}>Ôåò</span>}
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pivotData.map((g,gi) => {
+                    const gid = `g${gi}`
+                    const expanded = pvExpanded.has(gid)
+                    return (
+                      <React.Fragment key={gid}>
+                        <tr style={{background:isDark?'#1a2234':'#f0f4ff',cursor:'pointer'}}
+                          onClick={()=>setPvExpanded(s=>{const n=new Set(s);n.has(gid)?n.delete(gid):n.add(gid);return n})}>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,fontWeight:700,color:txt}}>
+                            <span style={{marginRight:6,color:'#6b7280',fontSize:10}}>{expanded?'ÔêÆ':'+'}</span>{g.k1}
+                          </td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:txtM,textAlign:'right'}}>{g.anuncios}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,textAlign:'right'}}>{g.sellers}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',textAlign:'right'}}>{fmtR(g.price_min)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:txtM,textAlign:'right'}}>{fmtR(g.price_med)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#ef4444',textAlign:'right'}}>{fmtR(g.price_max)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#38bdf8',textAlign:'right'}}>{fmtR(g.ticket)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#fb923c',fontWeight:700,textAlign:'right'}}>{fmtN(g.vendas)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',fontWeight:700,textAlign:'right'}}>{fmtR(g.receita)}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#a78bfa',fontWeight:700,textAlign:'right'}}>{fmtN(Math.round(g.vs))}</td>
+                          <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:'#60a5fa',fontWeight:700,textAlign:'right'}}>{g.sellers>0?(g.anuncios/g.sellers).toFixed(1):'—'}</td>
+                        </tr>
+                        {expanded && [...g.sub.values()].map((s,si) => {
+                          const sid=`${gid}s${si}`
+                          const exp2=pvExpanded.has(sid)
+                          return (
+                            <React.Fragment key={sid}>
+                              <tr style={{background:isDark?'#111827':'#f8fafc',cursor:'pointer'}}
+                                onClick={e=>{e.stopPropagation();setPvExpanded(st=>{const n=new Set(st);n.has(sid)?n.delete(sid):n.add(sid);return n})}}>
+                                <td style={{padding:'7px 10px 7px 28px',borderBottom:`1px solid ${brd2}`,color:txtM,fontSize:11}}>
+                                  <span style={{marginRight:6,color:'#4b5563',fontSize:10}}>{exp2?'ÔêÆ':'+'}</span>{s.k2}
+                                </td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:txtD,fontSize:11,textAlign:'right'}}>{s.anuncios}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:txtD,fontSize:11,textAlign:'right'}}>{s.sellers}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',fontSize:11,textAlign:'right'}}>{fmtR(s.price_min)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:txtD,fontSize:11,textAlign:'right'}}>{fmtR(s.price_med)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#ef4444',fontSize:11,textAlign:'right'}}>{fmtR(s.price_max)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#38bdf8',fontSize:11,textAlign:'right'}}>{fmtR(s.ticket)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#fb923c',fontWeight:700,fontSize:11,textAlign:'right'}}>{fmtN(s.vendas)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',fontWeight:700,fontSize:11,textAlign:'right'}}>{fmtR(s.receita)}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#a78bfa',fontSize:11,textAlign:'right'}}>{fmtN(Math.round(s.vs))}</td>
+                                <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:'#60a5fa',fontSize:11,textAlign:'right'}}>{s.sellers>0?(s.anuncios/s.sellers).toFixed(1):'—'}</td>
+                              </tr>
+                              {exp2 && s.rows.map((p,pi) => (
+                                <tr key={pi} style={{background:isDark?'#0f172a':'#ffffff'}}>
+                                  <td style={{padding:'5px 10px 5px 48px',borderBottom:`1px solid ${brd2}`,fontSize:10,color:txtD,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                                    <a href={String(p.permalink||'#')} target="_blank" rel="noopener noreferrer" style={{color:'#60a5fa',textDecoration:'none',fontSize:10}}>
+                                      {String(p.title||'').substring(0,60)}
+                                    </a>
+                                  </td>
+                                  <td style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:txtVD,fontSize:10,textAlign:'right'}}>1</td>
+                                  <td style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:txtVD,fontSize:10,textAlign:'right'}}>1</td>
+                                  <td colSpan={3} style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',fontSize:10,textAlign:'right'}}>{fmtR(parseFloat(String(p.price||0)))}</td>
+                                  <td style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:'#38bdf8',fontSize:10,textAlign:'right'}}>{fmtR(parseFloat(String(p.price||0)))}</td>
+                                  <td style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:'#fb923c',fontSize:10,fontWeight:700,textAlign:'right'}}>{fmtN(Number(p.sold_quantity||0))}</td>
+                                  <td style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:'#4ade80',fontSize:10,fontWeight:700,textAlign:'right'}}>{fmtR(Number(p.receita||0))}</td>
+                                  <td colSpan={2} style={{padding:'5px 10px',borderBottom:`1px solid ${brd2}`,color:txtVD,fontSize:10}}/>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          )
+                        })}
+                      </React.Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total geral — fixo no rodap├® */}
+            {pvTotals && (
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed',flexShrink:0,borderTop:`2px solid ${brd}`}}>
+                <colgroup>
+                  <col style={{width:'28%'}}/><col style={{width:'72px'}}/><col style={{width:'65px'}}/>
+                  <col style={{width:'85px'}}/><col style={{width:'85px'}}/><col style={{width:'85px'}}/>
+                  <col style={{width:'85px'}}/><col style={{width:'80px'}}/><col style={{width:'110px'}}/>
+                  <col style={{width:'72px'}}/><col style={{width:'72px'}}/>
+                </colgroup>
+                <tbody>
+                  <tr style={{background:isDark?'#1a2035':'#e8edf8'}}>
+                    <td style={{padding:'8px 10px',fontWeight:700,color:txt}}>­ƒôè Total geral</td>
+                    <td style={{padding:'8px 10px',color:txtM,textAlign:'right'}}>{pvTotals.anuncios}</td>
+                    <td style={{padding:'8px 10px',textAlign:'right'}}>{pvTotals.sellers}</td>
+                    <td style={{padding:'8px 10px',color:'#4ade80',textAlign:'right'}}>{fmtR(pvTotals.price_min)}</td>
+                    <td style={{padding:'8px 10px',color:txtM,textAlign:'right'}}>{fmtR(pvTotals.price_med)}</td>
+                    <td style={{padding:'8px 10px',color:'#ef4444',textAlign:'right'}}>{fmtR(pvTotals.price_max)}</td>
+                    <td style={{padding:'8px 10px',color:'#38bdf8',textAlign:'right'}}>{fmtR(pvTotals.ticket)}</td>
+                    <td style={{padding:'8px 10px',color:'#fb923c',fontWeight:700,textAlign:'right'}}>{fmtN(pvTotals.vendas)}</td>
+                    <td style={{padding:'8px 10px',color:'#4ade80',fontWeight:700,textAlign:'right'}}>{fmtR(pvTotals.receita)}</td>
+                    <td style={{padding:'8px 10px',color:'#a78bfa',textAlign:'right'}}>—</td>
+                    <td style={{padding:'8px 10px',color:'#60a5fa',textAlign:'right'}}>—</td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
-        {loading && (
-          <div style={{ width: 14, height: 14, border: `2px solid ${brd}`, borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+
+        {/* GR├üFICOS */}
+        {view==='graficos' && (
+          <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,color:txtD}}>
+            <div style={{fontSize:40,opacity:.3}}>­ƒôê</div>
+            <div style={{fontSize:16,fontWeight:700}}>Gr├íficos em desenvolvimento</div>
+            <div style={{fontSize:12,color:txtVD}}>Em breve dispon├¡vel</div>
+          </div>
         )}
       </div>
 
-      {/* ── Main area: table + col manager ── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-
-        {/* ── Table ── */}
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: 11, tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
-            <thead>
-              <tr>
-                {/* Radio select col */}
-                <th style={{ ...thStyle('_sel', '30px'), cursor: 'default' }} />
-                {visCols.map(col => {
-                  const canFilter = col.filterable !== false
-                  const isFiltered = !!(filters[col.key]?.size)
-                  return (
-                    <th
-                      key={col.key}
-                      style={thStyle(col.key, col.w)}
-                      onClick={() => handleSort(col.key)}
-                      onContextMenu={e => {
-                        if (!canFilter) return
-                        e.preventDefault()
-                        openFilter(col.key, e.currentTarget.getBoundingClientRect())
-                      }}
-                      title={canFilter ? 'Clique: ordenar | Ctrl+clique: filtrar' : 'Clique: ordenar'}
-                      onClickCapture={e => {
-                        if (canFilter && e.ctrlKey) {
-                          e.preventDefault()
-                          openFilter(col.key, (e.currentTarget as HTMLElement).getBoundingClientRect())
-                        }
-                      }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {isFiltered && <span style={{ color: '#fbbf24' }}>▼</span>}
-                        {col.label}
-                        {col.sortable && sortKey === col.key && (
-                          <span>{sortDir === 1 ? ' ↑' : ' ↓'}</span>
-                        )}
-                      </span>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {pageData.map((row, ri) => {
-                const rowKey = String(row.item_id || row.id || row.sku || row.user_id || row.category_id || ri)
-                const isEven = ri % 2 === 0
-                const isSelected = selected === rowKey
-                return (
-                  <tr
-                    key={rowKey}
-                    onClick={() => setSelected(s => s === rowKey ? null : rowKey)}
-                    style={{
-                      background: isSelected ? _hoverBg : isEven ? _rowBg : _rowAlt,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <td style={{ ...tdStyle('_sel'), width: 30, textAlign: 'center' }}>
-                      <input type="radio" readOnly checked={isSelected} style={{ cursor: 'pointer' }} />
-                    </td>
-                    {visCols.map(col => (
-                      <td key={col.key} style={tdStyle(col.key)}>
-                        {renderCell(row as Record<string, unknown>, col.key)}
-                      </td>
-                    ))}
-                  </tr>
-                )
-              })}
-              {pageData.length === 0 && (
-                <tr>
-                  <td colSpan={visCols.length + 1} style={{ textAlign: 'center', padding: 40, color: txtVD }}>
-                    Nenhum registro encontrado
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* ÔòÉÔòÉ Pager centralizado — fiel ├á extens├úo ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {view==='analitica' && (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,padding:'5px 12px',borderTop:`1px solid ${brd}`,background:h2bg,flexShrink:0,fontSize:11,color:txtD,position:'relative'}}>
+          <button style={btnStyle()} onClick={()=>setPage(1)} disabled={page===1} title="Primeira p├ígina">┬½</button>
+          <button style={btnStyle()} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} title="P├ígina anterior">ÔÇ╣</button>
+          <span style={{padding:'0 12px',color:txtM,fontWeight:600,minWidth:80,textAlign:'center'}}>
+            {page} / {totalPages||1}
+          </span>
+          <button style={btnStyle()} onClick={()=>setPage(p=>Math.min(totalPages||1,p+1))} disabled={page>=(totalPages||1)} title="Pr├│xima p├ígina">ÔÇ║</button>
+          <button style={btnStyle()} onClick={()=>setPage(totalPages||1)} disabled={page>=(totalPages||1)} title="├Ültima p├ígina">┬╗</button>
+          <span style={{position:'absolute',right:12,color:txtVD,fontSize:10}}>
+            {sorted.length.toLocaleString('pt-BR')} {countLabel}
+          </span>
         </div>
+      )}
 
-        {/* ── Col manager ── */}
-        {showColMgr && (
-          <div style={{ width: 220, flexShrink: 0, borderLeft: `1px solid ${brd}`, overflowY: 'auto', background: hbg }}>
-            <div style={{ padding: '8px 12px', borderBottom: `1px solid ${brd}`, fontSize: 10, fontWeight: 700, color: txtVD, letterSpacing: '.4px' }}>COLUNAS</div>
-            {cols.filter(c => !c.fixed).map((col, i) => (
-              <div
-                key={col.key}
-                draggable
-                onDragStart={() => onDragStart(i)}
-                onDragEnter={() => onDragEnter(i)}
-                onDragEnd={onDragEnd}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', cursor: 'grab', borderBottom: `1px solid ${brd}22` }}
-              >
-                <span style={{ color: txtD, fontSize: 12, cursor: 'grab' }}>⠿</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, cursor: 'pointer' }}>
-                  {/* Toggle switch */}
-                  <input type="checkbox" checked={col.visible} onChange={() => toggleCol(col.key)} style={{ display: 'none' }} id={`col-${col.key}`} />
-                  <label htmlFor={`col-${col.key}`} style={{ position: 'relative', display: 'inline-block', width: 28, height: 16, flexShrink: 0 }}>
-                    <span style={{
-                      position: 'absolute', inset: 0, borderRadius: 8,
-                      background: col.visible ? '#2563eb' : (isDark ? '#374151' : '#d1d5db'),
-                      transition: 'background .15s',
-                    }} />
-                    <span style={{
-                      position: 'absolute', top: 2, left: col.visible ? 14 : 2, width: 12, height: 12,
-                      borderRadius: '50%', background: '#fff', transition: 'left .15s',
-                    }} />
-                  </label>
-                  <span style={{ fontSize: 10, color: col.visible ? txt : txtD }}>{col.label}</span>
-                </label>
-              </div>
+      {/* ÔòÉÔòÉ Filter Dropdown ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {dropdown && (
+        <div ref={ddRef} style={{
+          position:'fixed',
+          top:Math.min(dropdown.rect.bottom+4,window.innerHeight-380),
+          left:Math.min(dropdown.rect.left,window.innerWidth-300),
+          width:280, background:isDark?'#1f2937':'#fff',
+          border:`1px solid ${brd}`, borderRadius:10, zIndex:9999,
+          boxShadow:'0 8px 32px rgba(0,0,0,.6)',
+          display:'flex',flexDirection:'column',
+        }}>
+          <div style={{padding:'10px 12px',borderBottom:`1px solid ${brd}`,display:'flex',justifyContent:'space-between'}}>
+            <span style={{fontSize:11,fontWeight:700,color:txt}}>Ôû╝ {colDefs.find(c=>c.key===dropdown.key)?.label||dropdown.key}</span>
+            <span style={{fontSize:10,color:txtVD}}>{uniqueVals.length} valores</span>
+          </div>
+          <div style={{padding:'8px 12px',borderBottom:`1px solid ${brd}`}}>
+            <input autoFocus type="text" placeholder="­ƒöì Buscar..."
+              value={filterSearch} onChange={e=>setFilterSearch(e.target.value)}
+              style={{width:'100%',background:isDark?'#0f172a':'#f3f4f6',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'5px 10px',fontFamily:'inherit',outline:'none'}}
+            />
+          </div>
+          <div style={{maxHeight:240,overflowY:'auto',padding:'4px 0'}}>
+            {uniqueVals.map(val=>(
+              <label key={val} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 12px',cursor:'pointer',fontSize:11,color:txt}}
+                onMouseEnter={e=>e.currentTarget.style.background=isDark?'#273549':'#f3f4f6'}
+                onMouseLeave={e=>e.currentTarget.style.background=''}>
+                <input type="checkbox" checked={tempFilter.has(val)}
+                  onChange={()=>{const n=new Set(tempFilter);n.has(val)?n.delete(val):n.add(val);setTempFilter(n)}}
+                  style={{accentColor:'#3b82f6'}}/>
+                <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{val||'(vazio)'}</span>
+              </label>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* ── Pager ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderTop: `1px solid ${brd}`, flexShrink: 0, position: 'relative' }}>
-        {[
-          { label: '«', to: 1, disabled: page === 1 },
-          { label: '‹', to: page - 1, disabled: page === 1 },
-          { label: '›', to: page + 1, disabled: page === totalPages },
-          { label: '»', to: totalPages, disabled: page === totalPages },
-        ].map(btn => (
-          <button key={btn.label} onClick={() => { if (!btn.disabled) setPage(btn.to) }}
-            disabled={btn.disabled}
-            style={{ background: 'none', border: `1px solid ${brd}`, borderRadius: 5, color: btn.disabled ? txtD : txtM, cursor: btn.disabled ? 'not-allowed' : 'pointer', fontSize: 13, padding: '3px 9px', fontFamily: 'inherit', fontWeight: 700, opacity: btn.disabled ? .4 : 1 }}>
-            {btn.label}
-          </button>
-        ))}
-        <span style={{ fontSize: 11, color: txtM, margin: '0 8px' }}>
-          {page} / {totalPages}
-        </span>
-        <span style={{ position: 'absolute', right: 12, fontSize: 11, color: txtD }}>
-          {processed.length.toLocaleString('pt-BR')} total
-        </span>
-      </div>
-
-      {/* ── Filter dropdown ── */}
-      {filterDrop && (() => {
-        const vals = uniqueVals(filterDrop.key)
-        const filtered = vals.filter(v => String(v).toLowerCase().includes(dropSearch.toLowerCase()))
-        const col = cols.find(c => c.key === filterDrop.key)
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              left: Math.min(filterDrop.anchor.left, window.innerWidth - 280),
-              top: Math.min(filterDrop.anchor.bottom + 4, window.innerHeight - 360),
-              width: 270, zIndex: 9999,
-              background: hbg, border: `1px solid ${brd}`, borderRadius: 8,
-              boxShadow: '0 8px 24px rgba(0,0,0,.6)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ padding: '8px 12px', borderBottom: `1px solid ${brd}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: txt }}>▼ {col?.label || filterDrop.key}</span>
-              <span style={{ fontSize: 10, color: txtD }}>{vals.length} valores</span>
-            </div>
-            <div style={{ padding: '6px 10px', borderBottom: `1px solid ${brd}` }}>
-              <input value={dropSearch} onChange={e => setDropSearch(e.target.value)} placeholder="🔍 Buscar..."
-                style={{ background: inputBg, border: `1px solid ${brd}`, borderRadius: 5, color: txt, fontSize: 11, padding: '4px 8px', fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-            </div>
-            <div style={{ maxHeight: 220, overflowY: 'auto', padding: '4px 0' }}>
-              {filtered.map(val => {
-                const s = String(val)
-                const checked = tempSel.has(s)
-                return (
-                  <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={checked} onChange={() => {
-                      setTempSel(ts => { const n = new Set(ts); checked ? n.delete(s) : n.add(s); return n })
-                    }} style={{ cursor: 'pointer' }} />
-                    <span style={{ fontSize: 11, color: txt }}>{s}</span>
-                  </label>
-                )
-              })}
-              {filtered.length === 0 && <div style={{ padding: '12px', textAlign: 'center', color: txtD, fontSize: 11 }}>Sem resultados</div>}
-            </div>
-            <div style={{ display: 'flex', gap: 6, padding: '8px 10px', borderTop: `1px solid ${brd}` }}>
-              <button onClick={() => setTempSel(new Set(vals.map(String)))}
-                style={{ flex: 1, background: 'none', border: `1px solid ${brd}`, borderRadius: 5, color: txtM, cursor: 'pointer', fontSize: 10, padding: '5px', fontFamily: 'inherit', fontWeight: 700 }}>☑ Todos</button>
-              <button onClick={applyFilter}
-                style={{ flex: 1, background: '#2563eb', border: 'none', borderRadius: 5, color: '#fff', cursor: 'pointer', fontSize: 10, padding: '5px', fontFamily: 'inherit', fontWeight: 700 }}>✓ Aplicar</button>
-              <button onClick={clearFilter}
-                style={{ flex: 1, background: 'none', border: `1px solid ${brd}`, borderRadius: 5, color: '#f87171', cursor: 'pointer', fontSize: 10, padding: '5px', fontFamily: 'inherit', fontWeight: 700 }}>✕ Limpar</button>
-            </div>
+          <div style={{display:'flex',gap:6,padding:10,borderTop:`1px solid ${brd}`}}>
+            <button onClick={()=>setTempFilter(new Set(uniqueVals))} style={{...btnStyle(),flex:1}}>Ôÿæ Todos</button>
+            <button onClick={applyFilter} style={{...btnStyle(true),flex:1}}>Ô£ô Aplicar</button>
+            <button onClick={clearFilter} style={{...btnStyle(),flex:1}}>Ô£ò Limpar</button>
           </div>
-        )
-      })()}
-
-      {/* Fecha dropdown ao clicar fora */}
-      {filterDrop && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setFilterDrop(null)} />
+        </div>
       )}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ÔòÉÔòÉ Col Manager — fiel ├á extens├úo ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {showCols && (
+        <div style={{
+          position:'absolute', top:88, right:16, zIndex:9999,
+          background:isDark?'#1f2937':'#fff',
+          border:`1px solid ${brd}`, borderRadius:10,
+          width:240, maxHeight:'calc(100% - 110px)',
+          boxShadow:'0 8px 40px rgba(0,0,0,.8)',
+          display:'flex', flexDirection:'column', overflow:'hidden',
+        }}>
+          {/* Header */}
+          <div style={{padding:'9px 12px',borderBottom:`1px solid ${brd}`,fontSize:11,fontWeight:700,color:'#93c5fd',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+            <span>Ôè× COLUNAS ┬À {colDefs.filter(c=>c.visible||fixedKeys.has(c.key)).length} vis├¡veis</span>
+            <button onClick={()=>setShowCols(false)} style={{background:'none',border:'none',color:txtM,cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>Ô£ò</button>
+          </div>
+          {/* Lista */}
+          <div style={{overflowY:'auto',flex:1,padding:'4px 0'}}>
+            {colDefs.map((col, idx) => {
+              const isFixed = fixedKeys.has(col.key)
+              const isOn = col.visible || isFixed
+              return (
+                <div key={col.key}
+                  draggable={!isFixed}
+                  onDragStart={()=>onDragStart(idx)}
+                  onDragOver={e=>onDragOver(e,idx)}
+                  onDrop={()=>onDrop(idx)}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    padding:'7px 10px', cursor:'default',
+                    fontSize:11, color:txtM,
+                    borderBottom:'1px solid rgba(255,255,255,.04)',
+                    background: dragOver===idx ? 'rgba(30,58,138,.2)' : '',
+                    transition:'background .1s',
+                  }}
+                >
+                  {/* Drag handle */}
+                  <span style={{color:txtVD,fontSize:11,flexShrink:0,cursor:isFixed?'default':'grab',opacity:.5,userSelect:'none'}}>Ôá┐</span>
+                  {/* Toggle switch — input escondido + slider CSS igual extens├úo */}
+                  <label style={{position:'relative',width:30,height:16,flexShrink:0,cursor:isFixed?'not-allowed':'pointer',display:'inline-block'}}>
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      disabled={isFixed}
+                      onChange={()=>{
+                        if(isFixed) return
+                        onColDefsChange(colDefs.map(c=>c.key===col.key?{...c,visible:!c.visible}:c))
+                      }}
+                      style={{opacity:0,width:0,height:0,position:'absolute'}}
+                    />
+                    <span style={{
+                      position:'absolute', inset:0, borderRadius:8,
+                      background: isOn ? '#3b82f6' : (isDark?'#374151':'#d1d5db'),
+                      transition:'background .2s',
+                    }}/>
+                    <span style={{
+                      position:'absolute', top:2,
+                      left: isOn ? 14 : 2,
+                      width:12, height:12, borderRadius:'50%',
+                      background:'#fff', transition:'left .2s',
+                      boxShadow:'0 1px 2px rgba(0,0,0,.3)',
+                    }}/>
+                  </label>
+                  {/* Label */}
+                  <span style={{flex:1, opacity:isOn?1:.4, textDecoration:isOn?'none':'line-through'}}>
+                    {col.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          {/* Footer */}
+          <div style={{padding:'8px 10px',borderTop:`1px solid ${brd}`,flexShrink:0,display:'flex',gap:6}}>
+            <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:true}))}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              Ôÿæ Todos
+            </button>
+            <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:false}))}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              ÔÿÉ Nenhum
+            </button>
+            <button onClick={()=>{
+              const defaults = colDefs.map(c=>({...c, visible:!!c.fixed}))
+              onColDefsChange(defaults)
+            }}
+              style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
+              Ôå║ Padr├úo
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        #${tableId} tbody tr:nth-child(odd)  td{background:${rowBg}}
+        #${tableId} tbody tr:nth-child(even) td{background:${rowAlt}}
+        #${tableId} tbody tr:hover           td{background:${hoverBg}!important}
+      `}</style>
     </div>
   )
 }
