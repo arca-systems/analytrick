@@ -25,7 +25,6 @@ interface DataTableProps {
   rowBg?: string; rowAlt?: string; hoverBg?: string
   h2bg?: string; brd?: string; brd2?: string
   txt?: string; txtM?: string; txtD?: string; txtVD?: string
-  isAdmin?: boolean
 }
 
 type View = 'analitica' | 'dinamica' | 'graficos'
