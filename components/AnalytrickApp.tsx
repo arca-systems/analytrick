@@ -337,7 +337,7 @@ export default function AnalytrickApp() {
         {/* Logo — imagem PNG */}
         <div style={{display:'flex',alignItems:'center',flexShrink:0,marginRight:8}}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Analytrick" style={{height:28,width:'auto',objectFit:'contain'}} />
+          <img src="/logo.png" alt="Analytrick" style={{height:44,width:'auto',objectFit:'contain'}} />
         </div>
 
         {/* Canal Dropdown — ao lado do logo */}
