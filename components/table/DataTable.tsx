@@ -42,16 +42,16 @@ const PV_VIEWS = [
   { id:'estado',    lbl1:'ESTADO',      lbl2:'CIDADE',
     key1:(p:Record<string,unknown>) => String(p.address_state||'(sem estado)'),
     key2:(p:Record<string,unknown>) => String(p.address_city||'(sem cidade)') },
-  { id:'reputacao', lbl1:'REPUTA├ç├âO',   lbl2:'MEDALHA',
-    key1:(p:Record<string,unknown>) => String(p.reputation_level||'(sem reputa├º├úo)'),
+  { id:'reputacao', lbl1:'REPUTAÃO',   lbl2:'MEDALHA',
+    key1:(p:Record<string,unknown>) => String(p.reputation_level||'(sem reputação)'),
     key2:(p:Record<string,unknown>) => String(p.power_seller_status||'(sem medalha)') },
-  { id:'modo',      lbl1:'MODO',        lbl2:'LOG├ìSTICA',
+  { id:'modo',      lbl1:'MODO',        lbl2:'LOGÍSTICA',
     key1:(p:Record<string,unknown>) => {
       const m = String(p.shipping_mode||'(sem modo)')
       if (m==='me1'||m==='ME1') return 'ME1'; if (m==='me2'||m==='ME2') return 'ME2'; return m
     },
     key2:(p:Record<string,unknown>) => {
-      const l = String(p.shipping_logistic_type||'(sem log├¡stica)')
+      const l = String(p.shipping_logistic_type||'(sem logística)')
       if (l==='fulfillment'||l==='FULL') return 'ME FULL'
       if (l==='cross_docking') return 'ME PLACES'
       if (l==='xd_drop_off')   return 'ME COLETA'
@@ -327,30 +327,30 @@ export function DataTable({
   return (
     <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden',minHeight:0}}>
 
-      {/* ÔòÉÔòÉ H2 toolbar ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {/* ════ H2 toolbar ════════════════════════════════════════════════════════════════════ */}
       <div style={{display:'flex',alignItems:'center',height:38,flexShrink:0,background:h2bg,borderBottom:`2px solid ${brd2}`,padding:'0 10px',gap:6}}>
         {/* Esquerda: busca + count */}
         <div style={{display:'flex',alignItems:'center',gap:8,flex:1,minWidth:0,overflow:'hidden'}}>
           {view!=='dinamica' && searchKeys.length>0 && (
-            <input type="text" placeholder="­ƒöì Buscar..."
+            <input type="text" placeholder="🔍 Buscar..."
               value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}
               style={{background:isDark?'#0f172a':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',outline:'none',width:180}}
             />
           )}
           <span style={{fontSize:12,color:txtVD,fontWeight:600,whiteSpace:'nowrap'}}>
             {view==='dinamica'
-              ? `${pivotData.length} grupos ┬À ${rows.length.toLocaleString('pt-BR')} itens`
-              : `${sorted.length.toLocaleString('pt-BR')} ${countLabel}${hasFilters?' ÔùÅ filtrado':''}`
+              ? `${pivotData.length} grupos · ${rows.length.toLocaleString('pt-BR')} itens`
+              : `${sorted.length.toLocaleString('pt-BR')} ${countLabel}${hasFilters?' ⚡ filtrado':''}`
             }
           </span>
         </div>
-        {/* Direita: bot├Áes */}
+        {/* Direita: botões */}
         <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
           {view!=='dinamica' && <>
-            <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">Ô£ò Filtros</button>
-            <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">Ôè× Colunas</button>
+            <button style={btnStyle(hasFilters)} onClick={clearAll} title="Limpar filtros">✕ Filtros</button>
+            <button style={btnStyle(showCols)} onClick={()=>setShowCols(v=>!v)} title="Gerenciar colunas">⊞ Colunas</button>
           </>}
-          {/* Seletor de agrupamento — aparece ao lado de Anal├¡tica quando Din├ómica est├í ativa */}
+          {/* Seletor de agrupamento — aparece ao lado de Analítica quando Dinâmica está ativa */}
           {view==='dinamica' && (
             <select value={pvView} onChange={e=>setPvView(e.target.value)}
               style={{background:isDark?'#1f2937':'#fff',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'4px 10px',fontFamily:'inherit',cursor:'pointer',outline:'none',fontWeight:600,marginRight:4}}>
@@ -360,34 +360,34 @@ export function DataTable({
             </select>
           )}
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
-          <button style={btnStyle(view==='analitica')} onClick={()=>setView('analitica')}>Ôëí Anal├¡tica</button>
-          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Din├ómica':'Dispon├¡vel apenas em An├║ncios'}>Ôè× Din├ómica</button>
-          <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>­ƒôê Gr├íficos</button>
+          <button style={btnStyle(view==='analitica')} onClick={()=>setView('analitica')}>⊟ Analítica</button>
+          <button style={{...btnStyle(view==='dinamica'),opacity:hasDinamica?1:.35,cursor:hasDinamica?'pointer':'not-allowed'}} onClick={()=>hasDinamica&&setView('dinamica')} title={hasDinamica?'Tabela Dinâmica':'Disponivel apenas em Anúncios'}>⊞ Dinâmica</button>
+          <button style={btnStyle(view==='graficos')}  onClick={()=>setView('graficos')}>📊 Gráficos</button>
           <div style={{width:1,height:20,background:brd,flexShrink:0,margin:'0 2px'}}/>
           {hasCadastro && isAdmin ? (
             <>
               {selectedRow ? (
                 <button style={{...btnStyle(true), background:'#0369a1', border:'1px solid #0284c7', color:'#fff'}}
                   onClick={()=>onEditar?.(selectedRow)}>
-                  Ô£Å´©Å Editar
+                  ✏️ Editar
                 </button>
               ) : (
                 <button style={{...btnStyle(false), background:'#15803d', border:'1px solid #166534', color:'#fff'}}
                   onClick={onCadastrar}>
-                  Ô×ò Cadastrar
+                  ✚ Cadastrar
                 </button>
               )}
             </>
           ) : (
-            <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">Ô¼çÔåæ Dados</button>
+            <button style={dlBtn} onClick={downloadCSV} title="Baixar CSV">⬇↑ Dados</button>
           )}
         </div>
       </div>
 
-      {/* ÔòÉÔòÉ Conte├║do por view ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {/* ════ Conteúdo por view ══════════════════════════════════════════════════════ */}
       <div style={{flex:1,overflow:'hidden',minHeight:0,display:'flex',flexDirection:'column'}}>
 
-        {/* ANAL├ìTICA */}
+        {/* ANALÍTICA */}
         {view==='analitica' && (
           <div style={{flex:1,overflow:'auto',minHeight:0}}>
             {loading ? (
@@ -406,7 +406,7 @@ export function DataTable({
                       const isFixed=fixedKeys.has(col.key), isSorted=sortCol===col.key, hasFilter=(filters[col.key]?.size??0)>0
                       return (
                         <th key={col.key} data-key={col.key}
-                          title="1 clique = ordenar ┬À Ctrl+clique = filtrar"
+                          title="1 clique = ordenar · Ctrl+clique = filtrar"
                           onClick={e=>handleThClick(e,col)}
                           style={{
                             minWidth:col.w,maxWidth:col.w,width:col.w,
@@ -423,9 +423,9 @@ export function DataTable({
                           <div style={{display:'flex',alignItems:'center',gap:3,overflow:'hidden'}}>
                             <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0}}>{col.label}</span>
                             <span style={{flexShrink:0}}>
-                              {hasFilter && <span style={{color:'#fbbf24'}}>Ôû╝</span>}
-                              {isSorted && <span>{sortDir===1?'Ôåæ':'Ôåô'}</span>}
-                              {!isSorted&&!hasFilter&&col.sortable && <span style={{opacity:.35,fontSize:9}}>Ôåò</span>}
+                              {hasFilter && <span style={{color:'#fbbf24'}}>▼</span>}
+                              {isSorted && <span>{sortDir===1?'↑':'↓'}</span>}
+                              {!isSorted&&!hasFilter&&col.sortable && <span style={{opacity:.35,fontSize:9}}>↕</span>}
                             </span>
                           </div>
                         </th>
@@ -471,7 +471,7 @@ export function DataTable({
           </div>
         )}
 
-        {/* DIN├éMICA (PIVOT) */}
+        {/* DINÂMICA (PIVOT) */}
         {view==='dinamica' && (
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
             {/* Tabela pivot */}
@@ -485,7 +485,7 @@ export function DataTable({
                 </colgroup>
                 <thead>
                   <tr>
-                    {[{k:'k1',l:PV_VIEWS.find(v=>v.id===pvView)?.lbl1||'GRUPO',align:'left'},{k:'anuncios',l:'AN├ÜNCIOS',align:'right'},{k:'sellers',l:'SELLERS',align:'right'},{k:'price_min',l:'PRE├çO MIN',align:'right'},{k:'price_med',l:'PRE├çO MED',align:'right'},{k:'price_max',l:'PRE├çO MAX',align:'right'},{k:'ticket',l:'TICKET',align:'right'},{k:'vendas',l:'VENDAS',align:'right'},{k:'receita',l:'RECEITA',align:'right'},{k:'vs',l:'V/S',align:'right',title:'Vendas / Sellers'},{k:'as',l:'A/S',align:'right',title:'An├║ncios / Sellers'}].map((col,ci)=>{
+                    {[{k:'k1',l:PV_VIEWS.find(v=>v.id===pvView)?.lbl1||'GRUPO',align:'left'},{k:'anuncios',l:'ANÚNCIOS',align:'right'},{k:'sellers',l:'SELLERS',align:'right'},{k:'price_min',l:'PREÇO MIN',align:'right'},{k:'price_med',l:'PREÇO MED',align:'right'},{k:'price_max',l:'PREÇO MAX',align:'right'},{k:'ticket',l:'TICKET',align:'right'},{k:'vendas',l:'VENDAS',align:'right'},{k:'receita',l:'RECEITA',align:'right'},{k:'vs',l:'V/S',align:'right',title:'Vendas / Sellers'},{k:'as',l:'A/S',align:'right',title:'Anúncios / Sellers'}].map((col,ci)=>{
                       const isSorted=pvSortCol===col.k
                       return (
                         <th key={col.k}
@@ -493,8 +493,8 @@ export function DataTable({
                           onClick={()=>{if(col.k==='k1')return;if(pvSortCol===col.k)setPvSortDir(d=>d===1?-1:1);else{setPvSortCol(col.k);setPvSortDir(-1)}}}
                           style={{...pvColStyle,textAlign:col.align as 'left'|'right',background:isSorted?headerColorSorted:headerColor,cursor:col.k==='k1'?'default':'pointer'}}>
                           <span>{col.l}</span>
-                          {isSorted && <span style={{marginLeft:3,fontSize:9}}>{pvSortDir===1?'Ôåæ':'Ôåô'}</span>}
-                          {!isSorted && col.k!=='k1' && <span style={{opacity:.35,fontSize:9,marginLeft:3}}>Ôåò</span>}
+                          {isSorted && <span style={{marginLeft:3,fontSize:9}}>{pvSortDir===1?'↑':'↓'}</span>}
+                          {!isSorted && col.k!=='k1' && <span style={{opacity:.35,fontSize:9,marginLeft:3}}>↕</span>}
                         </th>
                       )
                     })}
@@ -509,7 +509,7 @@ export function DataTable({
                         <tr style={{background:isDark?'#1a2234':'#f0f4ff',cursor:'pointer'}}
                           onClick={()=>setPvExpanded(s=>{const n=new Set(s);n.has(gid)?n.delete(gid):n.add(gid);return n})}>
                           <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,fontWeight:700,color:txt}}>
-                            <span style={{marginRight:6,color:'#6b7280',fontSize:10}}>{expanded?'ÔêÆ':'+'}</span>{g.k1}
+                            <span style={{marginRight:6,color:'#6b7280',fontSize:10}}>{expanded?'−':'+'}</span>{g.k1}
                           </td>
                           <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,color:txtM,textAlign:'right'}}>{g.anuncios}</td>
                           <td style={{padding:'8px 10px',borderBottom:`1px solid ${brd2}`,textAlign:'right'}}>{g.sellers}</td>
@@ -530,7 +530,7 @@ export function DataTable({
                               <tr style={{background:isDark?'#111827':'#f8fafc',cursor:'pointer'}}
                                 onClick={e=>{e.stopPropagation();setPvExpanded(st=>{const n=new Set(st);n.has(sid)?n.delete(sid):n.add(sid);return n})}}>
                                 <td style={{padding:'7px 10px 7px 28px',borderBottom:`1px solid ${brd2}`,color:txtM,fontSize:11}}>
-                                  <span style={{marginRight:6,color:'#4b5563',fontSize:10}}>{exp2?'ÔêÆ':'+'}</span>{s.k2}
+                                  <span style={{marginRight:6,color:'#4b5563',fontSize:10}}>{exp2?'−':'+'}</span>{s.k2}
                                 </td>
                                 <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:txtD,fontSize:11,textAlign:'right'}}>{s.anuncios}</td>
                                 <td style={{padding:'7px 10px',borderBottom:`1px solid ${brd2}`,color:txtD,fontSize:11,textAlign:'right'}}>{s.sellers}</td>
@@ -569,7 +569,7 @@ export function DataTable({
               </table>
             </div>
 
-            {/* Total geral — fixo no rodap├® */}
+            {/* Total geral — fixo no rodapé */}
             {pvTotals && (
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed',flexShrink:0,borderTop:`2px solid ${brd}`}}>
                 <colgroup>
@@ -580,7 +580,7 @@ export function DataTable({
                 </colgroup>
                 <tbody>
                   <tr style={{background:isDark?'#1a2035':'#e8edf8'}}>
-                    <td style={{padding:'8px 10px',fontWeight:700,color:txt}}>­ƒôè Total geral</td>
+                    <td style={{padding:'8px 10px',fontWeight:700,color:txt}}>📈 Total geral</td>
                     <td style={{padding:'8px 10px',color:txtM,textAlign:'right'}}>{pvTotals.anuncios}</td>
                     <td style={{padding:'8px 10px',textAlign:'right'}}>{pvTotals.sellers}</td>
                     <td style={{padding:'8px 10px',color:'#4ade80',textAlign:'right'}}>{fmtR(pvTotals.price_min)}</td>
@@ -598,33 +598,33 @@ export function DataTable({
           </div>
         )}
 
-        {/* GR├üFICOS */}
+        {/* GRÁFICOS */}
         {view==='graficos' && (
           <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,color:txtD}}>
-            <div style={{fontSize:40,opacity:.3}}>­ƒôê</div>
-            <div style={{fontSize:16,fontWeight:700}}>Gr├íficos em desenvolvimento</div>
-            <div style={{fontSize:12,color:txtVD}}>Em breve dispon├¡vel</div>
+            <div style={{fontSize:40,opacity:.3}}>📊</div>
+            <div style={{fontSize:16,fontWeight:700}}>Gráficos em desenvolvimento</div>
+            <div style={{fontSize:12,color:txtVD}}>Em breve disponível</div>
           </div>
         )}
       </div>
 
-      {/* ÔòÉÔòÉ Pager centralizado — fiel ├á extens├úo ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {/* ════ Pager centralizado — fiel à extensão ════════════════ */}
       {view==='analitica' && (
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,padding:'5px 12px',borderTop:`1px solid ${brd}`,background:h2bg,flexShrink:0,fontSize:11,color:txtD,position:'relative'}}>
-          <button style={btnStyle()} onClick={()=>setPage(1)} disabled={page===1} title="Primeira p├ígina">┬½</button>
-          <button style={btnStyle()} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} title="P├ígina anterior">ÔÇ╣</button>
+          <button style={btnStyle()} onClick={()=>setPage(1)} disabled={page===1} title="Primeira página">«</button>
+          <button style={btnStyle()} onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} title="Página anterior">‹</button>
           <span style={{padding:'0 12px',color:txtM,fontWeight:600,minWidth:80,textAlign:'center'}}>
             {page} / {totalPages||1}
           </span>
-          <button style={btnStyle()} onClick={()=>setPage(p=>Math.min(totalPages||1,p+1))} disabled={page>=(totalPages||1)} title="Pr├│xima p├ígina">ÔÇ║</button>
-          <button style={btnStyle()} onClick={()=>setPage(totalPages||1)} disabled={page>=(totalPages||1)} title="├Ültima p├ígina">┬╗</button>
+          <button style={btnStyle()} onClick={()=>setPage(p=>Math.min(totalPages||1,p+1))} disabled={page>=(totalPages||1)} title="Próxima página">›</button>
+          <button style={btnStyle()} onClick={()=>setPage(totalPages||1)} disabled={page>=(totalPages||1)} title="Última página">»</button>
           <span style={{position:'absolute',right:12,color:txtVD,fontSize:10}}>
             {sorted.length.toLocaleString('pt-BR')} {countLabel}
           </span>
         </div>
       )}
 
-      {/* ÔòÉÔòÉ Filter Dropdown ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {/* ════ Filter Dropdown ════════════════════════════════════════════════════════════ */}
       {dropdown && (
         <div ref={ddRef} style={{
           position:'fixed',
@@ -636,11 +636,11 @@ export function DataTable({
           display:'flex',flexDirection:'column',
         }}>
           <div style={{padding:'10px 12px',borderBottom:`1px solid ${brd}`,display:'flex',justifyContent:'space-between'}}>
-            <span style={{fontSize:11,fontWeight:700,color:txt}}>Ôû╝ {colDefs.find(c=>c.key===dropdown.key)?.label||dropdown.key}</span>
+            <span style={{fontSize:11,fontWeight:700,color:txt}}>▼ {colDefs.find(c=>c.key===dropdown.key)?.label||dropdown.key}</span>
             <span style={{fontSize:10,color:txtVD}}>{uniqueVals.length} valores</span>
           </div>
           <div style={{padding:'8px 12px',borderBottom:`1px solid ${brd}`}}>
-            <input autoFocus type="text" placeholder="­ƒöì Buscar..."
+            <input autoFocus type="text" placeholder="🔍 Buscar..."
               value={filterSearch} onChange={e=>setFilterSearch(e.target.value)}
               style={{width:'100%',background:isDark?'#0f172a':'#f3f4f6',border:`1px solid ${brd}`,borderRadius:6,color:txt,fontSize:11,padding:'5px 10px',fontFamily:'inherit',outline:'none'}}
             />
@@ -658,14 +658,14 @@ export function DataTable({
             ))}
           </div>
           <div style={{display:'flex',gap:6,padding:10,borderTop:`1px solid ${brd}`}}>
-            <button onClick={()=>setTempFilter(new Set(uniqueVals))} style={{...btnStyle(),flex:1}}>Ôÿæ Todos</button>
-            <button onClick={applyFilter} style={{...btnStyle(true),flex:1}}>Ô£ô Aplicar</button>
-            <button onClick={clearFilter} style={{...btnStyle(),flex:1}}>Ô£ò Limpar</button>
+            <button onClick={()=>setTempFilter(new Set(uniqueVals))} style={{...btnStyle(),flex:1}}>☑ Todos</button>
+            <button onClick={applyFilter} style={{...btnStyle(true),flex:1}}>✓ Aplicar</button>
+            <button onClick={clearFilter} style={{...btnStyle(),flex:1}}>✕ Limpar</button>
           </div>
         </div>
       )}
 
-      {/* ÔòÉÔòÉ Col Manager — fiel ├á extens├úo ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ */}
+      {/* ════ Col Manager — fiel à extensão ════════════════════════════ */}
       {showCols && (
         <div style={{
           position:'absolute', top:88, right:16, zIndex:9999,
@@ -677,8 +677,8 @@ export function DataTable({
         }}>
           {/* Header */}
           <div style={{padding:'9px 12px',borderBottom:`1px solid ${brd}`,fontSize:11,fontWeight:700,color:'#93c5fd',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-            <span>Ôè× COLUNAS ┬À {colDefs.filter(c=>c.visible||fixedKeys.has(c.key)).length} vis├¡veis</span>
-            <button onClick={()=>setShowCols(false)} style={{background:'none',border:'none',color:txtM,cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>Ô£ò</button>
+            <span>⊞ COLUNAS · {colDefs.filter(c=>c.visible||fixedKeys.has(c.key)).length} visíveis</span>
+            <button onClick={()=>setShowCols(false)} style={{background:'none',border:'none',color:txtM,cursor:'pointer',fontSize:14,lineHeight:1,padding:0}}>✕</button>
           </div>
           {/* Lista */}
           <div style={{overflowY:'auto',flex:1,padding:'4px 0'}}>
@@ -701,8 +701,8 @@ export function DataTable({
                   }}
                 >
                   {/* Drag handle */}
-                  <span style={{color:txtVD,fontSize:11,flexShrink:0,cursor:isFixed?'default':'grab',opacity:.5,userSelect:'none'}}>Ôá┐</span>
-                  {/* Toggle switch — input escondido + slider CSS igual extens├úo */}
+                  <span style={{color:txtVD,fontSize:11,flexShrink:0,cursor:isFixed?'default':'grab',opacity:.5,userSelect:'none'}}>⠿</span>
+                  {/* Toggle switch — input escondido + slider CSS igual extensão */}
                   <label style={{position:'relative',width:30,height:16,flexShrink:0,cursor:isFixed?'not-allowed':'pointer',display:'inline-block'}}>
                     <input
                       type="checkbox"
@@ -739,18 +739,18 @@ export function DataTable({
           <div style={{padding:'8px 10px',borderTop:`1px solid ${brd}`,flexShrink:0,display:'flex',gap:6}}>
             <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:true}))}
               style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
-              Ôÿæ Todos
+              ☑ Todos
             </button>
             <button onClick={()=>onColDefsChange(colDefs.map(c=>fixedKeys.has(c.key)?c:{...c,visible:false}))}
               style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
-              ÔÿÉ Nenhum
+              ☐ Nenhum
             </button>
             <button onClick={()=>{
               const defaults = colDefs.map(c=>({...c, visible:!!c.fixed}))
               onColDefsChange(defaults)
             }}
               style={{flex:1,padding:'5px',borderRadius:4,border:'none',background:isDark?'#374151':'#e5e7eb',color:txtM,fontSize:10,fontFamily:'inherit',cursor:'pointer',fontWeight:700}}>
-              Ôå║ Padr├úo
+              ⇧ Padrão
             </button>
           </div>
         </div>
