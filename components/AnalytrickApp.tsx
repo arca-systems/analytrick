@@ -100,20 +100,20 @@ export default function AnalytrickApp() {
   }, [channel])
 
   // ── Tema ─────────────────────────────────────────────────
-  const bg      = isDark ? '#111827' : '#f3f4f6'
-  const hbg     = isDark ? '#1f2937' : '#ffffff'
-  const brd     = isDark ? '#374151' : '#e5e7eb'
-  const brd2    = isDark ? '#2d3748' : '#d1d5db'
-  const txt     = isDark ? '#f9fafb' : '#111827'
-  const txtM    = isDark ? '#9ca3af' : '#374151'
-  const txtD    = isDark ? '#6b7280' : '#9ca3af'
-  const txtVD   = isDark ? '#4b5563' : '#9ca3af'
-  const h1bg    = isDark ? '#1a2035' : '#1e3a8a'
-  const h2bg    = isDark ? '#111827' : '#ffffff'
-  const rowBg   = isDark ? '#111827' : '#ffffff'
-  const rowAlt  = isDark ? '#1a2234' : '#f8fafc'
-  const hoverBg = isDark ? '#1e3a5f' : '#dbeafe'
-  const inputBg = isDark ? '#0f172a' : '#ffffff'
+  const bg      = isDark ? '#0a0f1a' : '#f3f4f6'
+  const hbg     = isDark ? '#111827' : '#ffffff'
+  const brd     = isDark ? '#1e3a3a' : '#e5e7eb'
+  const brd2    = isDark ? '#162e2e' : '#d1d5db'
+  const txt     = isDark ? '#f0fffe' : '#111827'
+  const txtM    = isDark ? '#7ecece' : '#374151'
+  const txtD    = isDark ? '#4a8888' : '#9ca3af'
+  const txtVD   = isDark ? '#2d5555' : '#9ca3af'
+  const h1bg    = isDark ? '#060d14' : '#07414a'
+  const h2bg    = isDark ? '#0a0f1a' : '#ffffff'
+  const rowBg   = isDark ? '#0a0f1a' : '#ffffff'
+  const rowAlt  = isDark ? '#0d1520' : '#f0fdfd'
+  const hoverBg = isDark ? '#0d2e2e' : '#ccfbfb'
+  const inputBg = isDark ? '#060d14' : '#ffffff'
 
   // ── Tab/canal configs ────────────────────────────────────
   function getTable(tab: TabId, ch: ChannelOption): string | null {
@@ -292,7 +292,7 @@ export default function AnalytrickApp() {
     cursor:'pointer', fontFamily:'inherit',
     display:'inline-flex', alignItems:'center', gap:4,
     whiteSpace:'nowrap', transition:'background .15s, transform .1s',
-    background: red ? 'rgba(220,38,38,.7)' : active ? '#ffe600' : 'rgba(255,255,255,.1)',
+    background: red ? 'rgba(220,38,38,.7)' : active ? '#07e6d4' : 'rgba(255,255,255,.1)',
     color:       red ? '#fff'              : active ? '#111'    : 'rgba(255,255,255,.8)',
     border:      red ? '1px solid rgba(185,28,28,.8)' : active ? '1px solid #d4b800' : '1px solid rgba(255,255,255,.18)',
   })
@@ -334,10 +334,10 @@ export default function AnalytrickApp() {
         padding:'0 10px', gap:0,
       }}>
 
-        {/* Logo — sem nome do canal aqui */}
-        <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0,marginRight:8}}>
-          <div style={{background:'#ffe600',borderRadius:6,width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15}}>📊</div>
-          <span style={{fontSize:13,fontWeight:800,letterSpacing:'.8px',color:'#ffe600'}}>Analytrick</span>
+        {/* Logo — imagem PNG */}
+        <div style={{display:'flex',alignItems:'center',flexShrink:0,marginRight:8}}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Analytrick" style={{height:28,width:'auto',objectFit:'contain'}} />
         </div>
 
         {/* Canal Dropdown — ao lado do logo */}
@@ -363,7 +363,7 @@ export default function AnalytrickApp() {
                   onClick={() => { setChannel(ch.id); setShowChannelMenu(false) }}
                   style={{
                     display:'flex',alignItems:'center',gap:10,width:'100%',
-                    background: channel===ch.id ? '#1e3a8a' : 'none',
+                    background: channel===ch.id ? '#063a3a' : 'none',
                     border:'none', borderBottom:`1px solid ${brd2}`,
                     padding:'9px 14px', cursor:'pointer', color:txt,
                     fontFamily:'inherit', fontSize:12,
@@ -374,7 +374,7 @@ export default function AnalytrickApp() {
                 >
                   <span style={{width:10,height:10,borderRadius:'50%',background:ch.color,flexShrink:0}}/>
                   {ch.id===null ? 'Home' : ch.label}
-                  {channel===ch.id && <span style={{marginLeft:'auto',color:'#ffe600'}}>✓</span>}
+                  {channel===ch.id && <span style={{marginLeft:'auto',color:'#07e6d4'}}>✓</span>}
                 </button>
               ))}
             </div>
@@ -394,10 +394,10 @@ export default function AnalytrickApp() {
                 display:'flex',alignItems:'center',padding:'0 14px',
                 height:'100%',fontSize:12,
                 fontWeight: activeTab===tab.id ? 700 : 600,
-                color: activeTab===tab.id ? '#ffe600' : 'rgba(255,255,255,.55)',
+                color: activeTab===tab.id ? '#07e6d4' : 'rgba(255,255,255,.55)',
                 background: activeTab===tab.id ? 'rgba(255,230,0,.08)' : 'none',
                 border:'none',
-                borderBottom: activeTab===tab.id ? '3px solid #ffe600' : '3px solid transparent',
+                borderBottom: activeTab===tab.id ? '3px solid #07e6d4' : '3px solid transparent',
                 borderTop:'3px solid transparent',
                 cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap',
                 transition:'color .15s',
@@ -439,7 +439,7 @@ export default function AnalytrickApp() {
 
                 {/* Usuário */}
                 <div style={{padding:'12px 16px',borderBottom:`1px solid ${brd}`,display:'flex',alignItems:'center',gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:'50%',background:'#1e3a8a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>👤</div>
+                  <div style={{width:36,height:36,borderRadius:'50%',background:'#063a3a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>👤</div>
                   <div style={{minWidth:0,flex:1}}>
                     <div style={{fontSize:12,fontWeight:700,color:txt,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.email || 'Usuário'}</div>
                     <div style={{fontSize:10,color:txtM,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.email || ''}</div>
@@ -463,7 +463,7 @@ export default function AnalytrickApp() {
                       <div><strong style={{color:txt}}>Nome:</strong> {user?.name || '—'}</div>
                       <div><strong style={{color:txt}}>Email:</strong> {user?.email || '—'}</div>
                       <div><strong style={{color:txt}}>Status:</strong> <span style={{color:'#4ade80'}}>{user?.status || '—'}</span></div>
-                      <div><strong style={{color:txt}}>Role:</strong> <span style={{color:isAdmin?'#ffe600':'#60a5fa',fontWeight:700}}>{(user?.role||'user').toUpperCase()}</span></div>
+                      <div><strong style={{color:txt}}>Role:</strong> <span style={{color:isAdmin?'#07e6d4':'#60a5fa',fontWeight:700}}>{(user?.role||'user').toUpperCase()}</span></div>
                       <div style={{marginTop:8,fontSize:9,color:txtVD}}>Versão: 0.19.0 · ARCA SYSTEMS LTDA</div>
                     </div>
                   )}
@@ -496,7 +496,7 @@ export default function AnalytrickApp() {
                       </div>
                       <button
                         onClick={() => showToast(`✓ Imposto: ${imposto}% · ROI: ${roi}%`)}
-                        style={{background:'#1e3a8a',border:'1px solid #163470',borderRadius:8,color:'#fff',padding:'8px',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700}}>
+                        style={{background:'#063a3a',border:'1px solid #163470',borderRadius:8,color:'#fff',padding:'8px',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700}}>
                         ✓ Salvar Financeiro
                       </button>
                     </>
