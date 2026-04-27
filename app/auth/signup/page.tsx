@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -35,8 +35,17 @@ async function checkCoupon(supabase: ReturnType<typeof createClient>, code: stri
   return data.ativo === true
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Wrapper com Suspense (obrigatório pelo Next.js para useSearchParams) ─────
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<div style={page}><div style={card}><Logo /></div></div>}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+function SignupForm() {
   const supabase      = createClient()
   const searchParams  = useSearchParams()
 
