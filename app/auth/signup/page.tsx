@@ -183,8 +183,12 @@ function SignupForm() {
   const [name,         setName]         = useState('')
   const [email,        setEmail]        = useState('')
   const [whatsapp,     setWhatsapp]     = useState('')
-  const [cnpjCpf,      setCnpjCpf]     = useState('')
-  const [docType,      setDocType]      = useState<'CNPJ' | 'CPF'>('CNPJ')
+  const [cnpjCpf,      setCnpjCpf]     = useState('')   // CNPJ se PJ, CPF se PF
+  const [cpf,          setCpf]          = useState('')   // CPF adicional quando PJ
+  const [docType,      setDocType]      = useState<'PJ' | 'PF'>('PJ')
+  const [companyRole,  setCompanyRole]  = useState<'admin' | 'employee' | 'contractor' | ''>('')
+  const [checkingCnpj, setCheckingCnpj] = useState(false)
+  const [cnpjExists,   setCnpjExists]   = useState<boolean | null>(null)
   const [password,     setPassword]     = useState('')
   const [confirm,      setConfirm]      = useState('')
   const [showPw,       setShowPw]       = useState(false)
@@ -290,9 +294,9 @@ function SignupForm() {
 
   function isDocValid() {
     if (!cnpjCpf) return null
-    const n = cnpjCpf.replace(/\D/g, '')
-    if (docType === 'CPF'  && n.length === 11) return isValidCPF(cnpjCpf)
-    if (docType === 'CNPJ' && n.length === 14) return isValidCNPJ(cnpjCpf)
+    const n = cnpjCpf.replace(/[^0-9]/g, '')
+    if (docType === 'PF'  && n.length === 11) return isValidCPF(cnpjCpf)
+    if (docType === 'PJ'  && n.length === 14) return isValidCNPJ(cnpjCpf)
     return null // ainda digitando
   }
 
@@ -305,7 +309,10 @@ function SignupForm() {
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (docValid === false)   { setError(`${docType} inválido. Verifique os dígitos.`); return }
+    if (docType === 'PF' && docValid === false) { setError('CPF inválido. Verifique os dígitos.'); return }
+    if (docType === 'PJ' && docValid === false) { setError('CNPJ inválido. Verifique os dígitos.'); return }
+    if (docType === 'PJ' && !isValidCPF(cpf))  { setError('CPF inválido. Verifique os dígitos.'); return }
+    if (docType === 'PJ' && !companyRole)       { setError('Selecione sua função na empresa.'); return }
     if (!pwAll)               { setError('A senha não atende todos os requisitos.'); return }
     if (password !== confirm) { setError('As senhas não coincidem.'); return }
     if (!terms)               { setError('Você precisa aceitar os termos de uso.'); return }
@@ -315,12 +322,13 @@ function SignupForm() {
       email, password,
       options: {
         data: {
-          full_name: name,
+          full_name:            name,
           whatsapp,
-          cnpj_cpf:  cnpjCpf,
-          doc_type:  docType,
-          afiliado:  afiliado || null,
-          cupom:     coupon   || null,
+          tax_id:               docType === 'PF' ? cnpjCpf : cpf,
+          company_registration: docType === 'PJ' ? cnpjCpf : null,
+          company_role:         docType === 'PJ' ? companyRole : null,
+          afiliado:             afiliado || null,
+          cupom:                coupon   || null,
         },
       },
     })
@@ -365,39 +373,105 @@ function SignupForm() {
         </Field>
       </div>
 
-      <Field label="DOCUMENTO">
+      {/* Tipo de pessoa */}
+      <Field label="TIPO DE CADASTRO">
         <div style={{ display: 'flex', gap: 8 }}>
-          {(['CNPJ', 'CPF'] as const).map(t => (
-            <button key={t} type="button"
-              onClick={() => { setDocType(t); setCnpjCpf('') }}
+          {([['PJ', 'Pessoa Jurídica'], ['PF', 'Pessoa Física']] as const).map(([val, label]) => (
+            <button key={val} type="button"
+              onClick={() => { setDocType(val); setCnpjCpf(''); setCpf(''); setCompanyRole(''); setCnpjExists(null) }}
               style={{
-                background: docType === t ? 'rgba(7,230,212,.15)' : 'transparent',
-                border: `1px solid ${docType === t ? '#07e6d4' : '#1e3a3a'}`,
-                borderRadius: 6, color: docType === t ? '#07e6d4' : '#4a8888',
+                flex: 1,
+                background: docType === val ? 'rgba(7,230,212,.15)' : 'transparent',
+                border: `1px solid ${docType === val ? '#07e6d4' : '#1e3a3a'}`,
+                borderRadius: 6, color: docType === val ? '#07e6d4' : '#4a8888',
                 fontSize: 11, fontWeight: 700, padding: '9px 14px',
-                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s', whiteSpace: 'nowrap',
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s',
               }}
-            >{t}</button>
+            >{label}</button>
           ))}
-          <div style={{ position: 'relative', flex: 1 }}>
+        </div>
+      </Field>
+
+      {/* CNPJ — só para PJ */}
+      {docType === 'PJ' && (
+        <Field label="CNPJ">
+          <div style={{ position: 'relative' }}>
             <Input
               value={cnpjCpf}
-              onChange={v => setCnpjCpf(maskDoc(v, docType))}
-              placeholder={docType === 'CNPJ' ? '00.000.000/0001-00' : '000.000.000-00'}
+              onChange={v => {
+                const masked = maskDoc(v, 'CNPJ')
+                setCnpjCpf(masked)
+                const digits = masked.replace(/\D/g, '')
+                if (digits.length === 14) {
+                  if (!isValidCNPJ(masked)) { setCnpjExists(null); return }
+                  setCheckingCnpj(true)
+                  supabase.from('companies').select('company_registration')
+                    .eq('company_registration', digits).single()
+                    .then(({ data }) => { setCnpjExists(!!data); setCheckingCnpj(false) })
+                } else { setCnpjExists(null) }
+              }}
+              placeholder="00.000.000/0001-00"
               required
               style={{
                 paddingRight: 32,
                 borderColor: docValid === false ? '#ef4444' : docValid === true ? '#07e6d4' : undefined,
               }}
             />
-            {docValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
-            {docValid === false && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
+            {checkingCnpj && <span style={iconPos}><span className="spin-sm" /></span>}
+            {!checkingCnpj && docValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
+            {!checkingCnpj && docValid === false && cnpjCpf && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
           </div>
+          {docValid === false && cnpjCpf && <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>CNPJ inválido</p>}
+          {cnpjExists === true  && <p style={{ fontSize: 10, color: '#07e6d4', margin: '4px 0 0' }}>✓ Empresa já cadastrada — você será vinculado</p>}
+          {cnpjExists === false && docValid === true && <p style={{ fontSize: 10, color: '#4a8888', margin: '4px 0 0' }}>Nova empresa — será cadastrada automaticamente</p>}
+        </Field>
+      )}
+
+      {/* CPF — para PF e também para PJ (sócio precisa informar CPF) */}
+      <Field label={docType === 'PJ' ? 'SEU CPF' : 'CPF'}>
+        <div style={{ position: 'relative' }}>
+          <Input
+            value={docType === 'PJ' ? cpf : cnpjCpf}
+            onChange={v => docType === 'PJ' ? setCpf(maskDoc(v, 'CPF')) : setCnpjCpf(maskDoc(v, 'CPF'))}
+            placeholder="000.000.000-00"
+            required
+            style={{
+              paddingRight: 32,
+              borderColor: docType === 'PF' && docValid === false ? '#ef4444'
+                         : docType === 'PF' && docValid === true  ? '#07e6d4'
+                         : docType === 'PJ' && cpf.replace(/\D/g,'').length === 11 && !isValidCPF(cpf) ? '#ef4444'
+                         : docType === 'PJ' && isValidCPF(cpf) ? '#07e6d4'
+                         : undefined,
+            }}
+          />
+          {docType === 'PF' && docValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
+          {docType === 'PF' && docValid === false && cnpjCpf && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
+          {docType === 'PJ' && isValidCPF(cpf)   && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
+          {docType === 'PJ' && cpf.replace(/\D/g,'').length === 11 && !isValidCPF(cpf) && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
         </div>
-        {docValid === false && (
-          <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>{docType} inválido</p>
-        )}
+        {docType === 'PF' && docValid === false && cnpjCpf && <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>CPF inválido</p>}
       </Field>
+
+      {/* Função na empresa — só para PJ */}
+      {docType === 'PJ' && (
+        <Field label="FUNÇÃO NA EMPRESA">
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([['admin', 'Sócio / Admin'], ['employee', 'Colaborador'], ['contractor', 'Consultor / Prestador']] as const).map(([val, label]) => (
+              <button key={val} type="button"
+                onClick={() => setCompanyRole(val)}
+                style={{
+                  flex: 1,
+                  background: companyRole === val ? 'rgba(7,230,212,.15)' : 'transparent',
+                  border: `1px solid ${companyRole === val ? '#07e6d4' : '#1e3a3a'}`,
+                  borderRadius: 6, color: companyRole === val ? '#07e6d4' : '#4a8888',
+                  fontSize: 10, fontWeight: 700, padding: '8px 6px',
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s', textAlign: 'center',
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        </Field>
+      )}
 
       <Field label="SENHA (mín. 12 caracteres, maiúscula, número e especial)">
         <div style={{ position: 'relative' }}>
