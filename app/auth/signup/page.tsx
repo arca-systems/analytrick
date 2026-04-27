@@ -22,15 +22,33 @@ function passwordStrength(pw: string) {
   return { score, color: '#07e6d4', label: 'Forte' }
 }
 
-// ─── Validar cupom ────────────────────────────────────────────────────────────
-async function checkCoupon(supabase: ReturnType<typeof createClient>, code: string) {
+// ─── Validar cupom e retornar afiliado vinculado ─────────────────────────────
+async function checkCoupon(
+  supabase: ReturnType<typeof createClient>,
+  code: string
+): Promise<{ valid: boolean; affiliateCode: string | null }> {
   const { data, error } = await supabase
-    .from('cupons')
-    .select('codigo, ativo')
-    .eq('codigo', code.toUpperCase())
+    .from('coupons')
+    .select('code, active, affiliate_code')
+    .eq('code', code.toUpperCase())
     .single()
-  if (error || !data) return false
-  return data.ativo === true
+  if (error || !data || !data.active) return { valid: false, affiliateCode: null }
+  return { valid: true, affiliateCode: data.affiliate_code ?? null }
+}
+
+// ─── Buscar cupom do afiliado ─────────────────────────────────────────────────
+async function fetchAffiliateCoupon(
+  supabase: ReturnType<typeof createClient>,
+  affiliateCode: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('code')
+    .eq('affiliate_code', affiliateCode.toUpperCase())
+    .eq('active', true)
+    .single()
+  if (error || !data) return null
+  return data.code
 }
 
 // ─── Features lado esquerdo ───────────────────────────────────────────────────
@@ -159,45 +177,63 @@ function SignupForm() {
   const supabase     = createClient()
   const searchParams = useSearchParams()
 
+  // ?afiliado=PARTNER01 — único parâmetro de URL possível
   const afiliadoUrl = searchParams.get('afiliado') ?? ''
-  const cupomUrl    = searchParams.get('cupom')    ?? ''
 
-  const [name,        setName]        = useState('')
-  const [email,       setEmail]       = useState('')
-  const [whatsapp,    setWhatsapp]    = useState('')
-  const [cnpjCpf,     setCnpjCpf]    = useState('')
-  const [docType,     setDocType]     = useState<'CNPJ' | 'CPF'>('CNPJ')
-  const [password,    setPassword]    = useState('')
-  const [confirm,     setConfirm]     = useState('')
-  const [showPw,      setShowPw]      = useState(false)
-  const [showConf,    setShowConf]    = useState(false)
-  const [coupon,      setCoupon]      = useState(cupomUrl)
-  const [afiliado,    setAfiliado]    = useState(afiliadoUrl)
-  const [terms,       setTerms]       = useState(false)
-  const [error,       setError]       = useState('')
-  const [success,     setSuccess]     = useState(false)
-  const [loading,     setLoading]     = useState(false)
-  const [couponValid, setCouponValid] = useState<boolean | null>(null)
-  const [checkingCpn, setCheckingCpn] = useState(false)
+  const [name,         setName]         = useState('')
+  const [email,        setEmail]        = useState('')
+  const [whatsapp,     setWhatsapp]     = useState('')
+  const [cnpjCpf,      setCnpjCpf]     = useState('')
+  const [docType,      setDocType]      = useState<'CNPJ' | 'CPF'>('CNPJ')
+  const [password,     setPassword]     = useState('')
+  const [confirm,      setConfirm]      = useState('')
+  const [showPw,       setShowPw]       = useState(false)
+  const [showConf,     setShowConf]     = useState(false)
+  const [coupon,       setCoupon]       = useState('')
+  const [afiliado,     setAfiliado]     = useState('')
+  const [terms,        setTerms]        = useState(false)
+  const [error,        setError]        = useState('')
+  const [success,      setSuccess]      = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [couponValid,  setCouponValid]  = useState<boolean | null>(null)
+  const [checkingCpn,  setCheckingCpn]  = useState(false)
+  // fromAffiliate = veio via ?afiliado= na URL (trava cupom e afiliado)
+  const [fromAffiliate, setFromAffiliate] = useState(false)
 
+  // Cenário 1: veio com ?afiliado= na URL
+  // → preenche afiliado, busca cupom do afiliado no banco e trava tudo
   useEffect(() => {
-    if (afiliadoUrl) setAfiliado(afiliadoUrl)
-    if (cupomUrl)    setCoupon(cupomUrl)
-  }, [afiliadoUrl, cupomUrl])
+    if (!afiliadoUrl) return
+    setAfiliado(afiliadoUrl.toUpperCase())
+    setFromAffiliate(true)
+    fetchAffiliateCoupon(supabase, afiliadoUrl).then(code => {
+      if (code) { setCoupon(code); setCouponValid(true) }
+    })
+  }, [afiliadoUrl, supabase])
 
-  const validateCoupon = useCallback(async (val: string) => {
-    if (!val) { setCouponValid(null); return }
+  // Cenário 2: pessoa digita cupom manualmente
+  // → valida no banco e preenche afiliado automaticamente
+  const handleCouponChange = useCallback(async (val: string) => {
+    setCoupon(val)
+    if (!val) { setCouponValid(null); setAfiliado(''); return }
     setCheckingCpn(true)
-    const ok = await checkCoupon(supabase, val)
-    setCouponValid(ok)
+    const result = await checkCoupon(supabase, val)
+    setCouponValid(result.valid)
+    setAfiliado(result.affiliateCode ?? '')
     setCheckingCpn(false)
   }, [supabase])
 
-  useEffect(() => {
-    if (cupomUrl) return
-    const t = setTimeout(() => validateCoupon(coupon), 600)
-    return () => clearTimeout(t)
-  }, [coupon, cupomUrl, validateCoupon])
+  // Debounce na digitação do cupom
+  const couponDebounceRef = useCallback(
+    (() => {
+      let t: ReturnType<typeof setTimeout>
+      return (val: string) => {
+        clearTimeout(t)
+        t = setTimeout(() => handleCouponChange(val), 600)
+      }
+    })(),
+    [handleCouponChange]
+  )
 
   function maskPhone(v: string) {
     const n = v.replace(/\D/g, '').slice(0, 11)
@@ -365,13 +401,14 @@ function SignupForm() {
         <Field label="CUPOM DE DESCONTO">
           <div style={{ position: 'relative' }}>
             <Input
-              value={coupon} onChange={setCoupon}
+              value={coupon}
+              onChange={v => { setCoupon(v); couponDebounceRef(v) }}
               placeholder="CUPOM123"
-              disabled={!!cupomUrl}
+              disabled={fromAffiliate}
               style={{
                 paddingRight: 32,
                 borderColor: couponValid === false ? '#ef4444' : couponValid === true ? '#07e6d4' : undefined,
-                opacity: cupomUrl ? .5 : 1,
+                opacity: fromAffiliate ? .5 : 1,
               }}
             />
             {checkingCpn && <span style={iconPos}><span className="spin-sm" /></span>}
@@ -384,10 +421,10 @@ function SignupForm() {
 
         <Field label="CÓDIGO DE PARCEIRO">
           <Input
-            value={afiliado} onChange={setAfiliado}
-            placeholder="PARCEIRO"
-            disabled={!!afiliadoUrl}
-            style={{ opacity: afiliadoUrl ? .5 : 1 }}
+            value={afiliado} onChange={() => {}}
+            placeholder="Preenchido automaticamente"
+            disabled={true}
+            style={{ opacity: afiliado ? 1 : .4, cursor: 'not-allowed' }}
           />
         </Field>
       </div>
