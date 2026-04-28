@@ -61,9 +61,10 @@ export async function middleware(request: NextRequest) {
       const isTrial    = profile.subscription_status === 'trial' && !trialEnded
 
       // Trial expirou e sem assinatura → página de assinar
-      if (!isActive && !isTrial && pathname !== '/assinar') {
-        return NextResponse.redirect(new URL('/assinar', request.url))
-      }
+      // TODO: habilitar quando página /assinar estiver criada
+      // if (!isActive && !isTrial && pathname !== '/assinar') {
+      //   return NextResponse.redirect(new URL('/assinar', request.url))
+      // }
     }
   }
 
