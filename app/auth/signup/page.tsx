@@ -16,73 +16,83 @@ function validatePassword(pw: string) {
 }
 function passwordStrength(pw: string) {
   const score = Object.values(validatePassword(pw)).filter(Boolean).length
-  if (score <= 1) return { score, color: '#ef4444', label: 'Fraca' }
-  if (score === 2) return { score, color: '#f97316', label: 'Razoável' }
-  if (score === 3) return { score, color: '#eab308', label: 'Boa' }
-  return { score, color: '#07e6d4', label: 'Forte' }
+  if (score <= 1) return { score, color: '#ef4444' }
+  if (score === 2) return { score, color: '#f97316' }
+  if (score === 3) return { score, color: '#eab308' }
+  return { score, color: '#07e6d4' }
 }
 
-// ─── Validar cupom e retornar afiliado vinculado ─────────────────────────────
-async function checkCoupon(
-  supabase: ReturnType<typeof createClient>,
-  code: string
-): Promise<{ valid: boolean; affiliateCode: string | null }> {
-  const { data, error } = await supabase
-    .from('coupons')
-    .select('code, active, affiliate_code')
-    .eq('code', code.toUpperCase())
-    .single()
-  if (error || !data || !data.active) return { valid: false, affiliateCode: null }
-  return { valid: true, affiliateCode: data.affiliate_code ?? null }
+// ─── Validação CPF ────────────────────────────────────────────────────────────
+function isValidCPF(cpf: string) {
+  const n = cpf.replace(/[^0-9]/g, '')
+  if (n.length !== 11 || /^(\d)\1+$/.test(n)) return false
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(n[i]) * (10 - i)
+  let r = (sum * 10) % 11
+  if (r === 10 || r === 11) r = 0
+  if (r !== parseInt(n[9])) return false
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(n[i]) * (11 - i)
+  r = (sum * 10) % 11
+  if (r === 10 || r === 11) r = 0
+  return r === parseInt(n[10])
 }
 
-// ─── Buscar cupom do afiliado ─────────────────────────────────────────────────
-async function fetchAffiliateCoupon(
-  supabase: ReturnType<typeof createClient>,
-  affiliateCode: string
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('coupons')
-    .select('code')
-    .eq('affiliate_code', affiliateCode.toUpperCase())
-    .eq('active', true)
-    .single()
-  if (error || !data) return null
-  return data.code
+// ─── Validação CNPJ ───────────────────────────────────────────────────────────
+function isValidCNPJ(cnpj: string) {
+  const n = cnpj.replace(/[^0-9]/g, '')
+  if (n.length !== 14 || /^(\d)\1+$/.test(n)) return false
+  const calc = (s: string, w: number[]) => {
+    let sum = 0
+    for (let i = 0; i < w.length; i++) sum += parseInt(s[i]) * w[i]
+    const r = sum % 11
+    return r < 2 ? 0 : 11 - r
+  }
+  return (
+    calc(n, [5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(n[12]) &&
+    calc(n, [6,5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(n[13])
+  )
+}
+
+// ─── Máscaras ─────────────────────────────────────────────────────────────────
+function maskPhone(v: string) {
+  const n = v.replace(/[^0-9]/g, '').slice(0, 11)
+  if (n.length <= 2)  return `(${n}`
+  if (n.length <= 7)  return `(${n.slice(0,2)}) ${n.slice(2)}`
+  return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`
+}
+
+function maskCPF(v: string) {
+  const n = v.replace(/[^0-9]/g, '').slice(0,11)
+  if (n.length <= 3) return n
+  if (n.length <= 6) return `${n.slice(0,3)}.${n.slice(3)}`
+  if (n.length <= 9) return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6)}`
+  return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6,9)}-${n.slice(9)}`
+}
+
+function maskCNPJ(v: string) {
+  const n = v.replace(/[^0-9]/g, '').slice(0,14)
+  if (n.length <= 2)  return n
+  if (n.length <= 5)  return `${n.slice(0,2)}.${n.slice(2)}`
+  if (n.length <= 8)  return `${n.slice(0,2)}.${n.slice(2,5)}.${n.slice(5)}`
+  if (n.length <= 12) return `${n.slice(0,2)}.${n.slice(2,5)}.${n.slice(5,8)}/${n.slice(8)}`
+  return `${n.slice(0,2)}.${n.slice(2,5)}.${n.slice(5,8)}/${n.slice(8,12)}-${n.slice(12)}`
 }
 
 // ─── Features lado esquerdo ───────────────────────────────────────────────────
 const FEATURES = [
-  {
-    icon: '📊',
-    title: 'Análise de Anúncios',
-    desc: 'Monitore performance, preço e posicionamento dos seus anúncios no Mercado Livre em tempo real.',
-  },
-  {
-    icon: '🏷️',
-    title: 'Pesquisa de Categorias',
-    desc: 'Descubra as melhores categorias com maior volume de vendas e menor concorrência.',
-  },
-  {
-    icon: '📈',
-    title: 'Tendências de Mercado',
-    desc: 'Identifique produtos em alta antes da concorrência e aproveite as oportunidades.',
-  },
-  {
-    icon: '🏆',
-    title: 'Análise de Marcas',
-    desc: 'Veja quais marcas dominam cada categoria e encontre oportunidades de posicionamento.',
-  },
+  { icon: '📊', title: 'Análise de Anúncios',     desc: 'Monitore performance, preço e posicionamento dos seus anúncios nos marketplaces em tempo real.' },
+  { icon: '🏷️', title: 'Pesquisa de Categorias',  desc: 'Descubra as melhores categorias com maior volume de vendas e menor concorrência.' },
+  { icon: '📈', title: 'Tendências de Mercado',    desc: 'Identifique produtos em alta antes da concorrência e aproveite as oportunidades.' },
+  { icon: '🏆', title: 'Análise de Marcas',        desc: 'Veja quais marcas dominam cada categoria e encontre oportunidades de posicionamento.' },
 ]
+
+const BASE_PRICE = 97
 
 // ─── Wrapper Suspense ─────────────────────────────────────────────────────────
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div style={pageStyle}>
-        <div style={{ color: '#07e6d4', fontSize: 13 }}>Carregando...</div>
-      </div>
-    }>
+    <Suspense fallback={<div style={pageStyle}><div style={{ color: '#07e6d4' }}>Carregando...</div></div>}>
       <SignupLayout />
     </Suspense>
   )
@@ -90,15 +100,17 @@ export default function SignupPage() {
 
 // ─── Layout two-column ────────────────────────────────────────────────────────
 function SignupLayout() {
+  const [couponValid,    setCouponValid]    = useState<boolean | null>(null)
+  const [couponDiscount, setCouponDiscount] = useState<number>(0)
+
   return (
     <div style={pageStyle}>
       <div style={containerStyle}>
-
         {/* ── Coluna esquerda ── */}
         <div style={leftColStyle}>
           <div style={{ marginBottom: 40 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Analytrick" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
+            <img src="/logo.png" alt="Analytrick" style={{ height: 36, objectFit: 'contain' }} />
           </div>
 
           <div style={{ marginBottom: 36 }}>
@@ -108,8 +120,8 @@ function SignupLayout() {
                 teste grátis
               </span>
             </h1>
-            <p style={{ fontSize: 13, color: '#4a8888', lineHeight: 1.7, margin: 0 }}>
-              Com o Analytrick você toma decisões mais inteligentes no ecommerce, com dados reais do Mercado Livre.
+            <p style={{ fontSize: 13, color: '#7aabab', lineHeight: 1.7, margin: 0 }}>
+              Com o Analytrick você toma decisões mais inteligentes no ecommerce, com dados reais dos marketplaces.
             </p>
           </div>
 
@@ -118,26 +130,65 @@ function SignupLayout() {
               <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                 <div style={{
                   width: 38, height: 38, minWidth: 38,
-                  background: 'rgba(7,230,212,.08)',
-                  border: '1px solid rgba(7,230,212,.15)',
-                  borderRadius: 10,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 17,
+                  background: 'rgba(7,230,212,.08)', border: '1px solid rgba(7,230,212,.15)',
+                  borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
                 }}>
                   {f.icon}
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#f0fffe', marginBottom: 3 }}>{f.title}</div>
-                  <div style={{ fontSize: 12, color: '#2d5555', lineHeight: 1.6 }}>{f.desc}</div>
+                  <div style={{ fontSize: 12, color: '#7aabab', lineHeight: 1.6 }}>{f.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: 40, borderTop: '1px solid #0d2525' }}>
+          {/* Bloco de preço */}
+          <div style={{
+            background: 'rgba(7,230,212,.06)', border: '1px solid rgba(7,230,212,.15)',
+            borderRadius: 12, padding: '20px 24px', marginTop: 32,
+          }}>
+            <div style={{ fontSize: 11, color: '#4a8888', fontWeight: 600, letterSpacing: '.5px', marginBottom: 10 }}>
+              APÓS OS 7 DIAS GRÁTIS
+            </div>
+
+            {couponValid && couponDiscount > 0 ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: '#07e6d4' }}>R$</span>
+                  <span style={{ fontSize: 36, fontWeight: 800, color: '#07e6d4', lineHeight: 1 }}>
+                    {(BASE_PRICE * (1 - couponDiscount / 100)).toFixed(2).replace('.', ',')}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#4a8888' }}>/mês</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: '#7aabab', textDecoration: 'line-through' }}>R$ {BASE_PRICE},00</span>
+                  <span style={{ fontSize: 10, background: 'rgba(7,230,212,.15)', color: '#07e6d4', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                    -{couponDiscount}% OFF
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#4a8888' }}>R$</span>
+                <span style={{ fontSize: 36, fontWeight: 800, color: '#f0fffe', lineHeight: 1 }}>97</span>
+                <span style={{ fontSize: 12, color: '#4a8888' }}>/mês</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {['Extensão para Chrome', 'Web App completo', 'Cancele quando quiser'].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#7aabab' }}>
+                  <span style={{ color: '#07e6d4', fontSize: 10 }}>✓</span> {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 'auto', paddingTop: 32, borderTop: '1px solid #0d2525' }}>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              {['Sem cartão de crédito', '30 dias grátis', 'Cancele quando quiser'].map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#2d5555' }}>
+              {['Sem cartão de crédito', '7 dias grátis', 'Cancele quando quiser'].map((t, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#4a8888' }}>
                   <span style={{ color: '#07e6d4', fontSize: 10 }}>✓</span> {t}
                 </div>
               ))}
@@ -146,25 +197,21 @@ function SignupLayout() {
         </div>
 
         {/* ── Divisor ── */}
-        <div style={{
-          width: 1, flexShrink: 0,
-          background: 'linear-gradient(to bottom, transparent, #1e3a3a 20%, #1e3a3a 80%, transparent)',
-        }} />
+        <div style={{ width: 1, flexShrink: 0, background: 'linear-gradient(to bottom, transparent, #1e3a3a 20%, #1e3a3a 80%, transparent)' }} />
 
         {/* ── Coluna direita ── */}
         <div style={rightColStyle}>
           <div style={{ marginBottom: 24 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f0fffe', margin: '0 0 4px' }}>
-              Crie sua conta
-            </h2>
-            <p style={{ fontSize: 12, color: '#2d5555', margin: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f0fffe', margin: '0 0 4px' }}>Crie sua conta</h2>
+            <p style={{ fontSize: 12, color: '#4a8888', margin: 0 }}>
               Já tem conta?{' '}
-              <Link href="/auth/login" style={{ color: '#07e6d4', textDecoration: 'none', fontWeight: 600 }}>
-                Entrar
-              </Link>
+              <Link href="/auth/login" style={{ color: '#07e6d4', textDecoration: 'none', fontWeight: 600 }}>Entrar</Link>
             </p>
           </div>
-          <SignupForm />
+          <SignupForm onCouponChange={(valid, discount) => {
+            setCouponValid(valid)
+            setCouponDiscount(discount)
+          }} />
         </div>
       </div>
       <Styles />
@@ -173,22 +220,18 @@ function SignupLayout() {
 }
 
 // ─── Formulário ───────────────────────────────────────────────────────────────
-function SignupForm() {
+function SignupForm({ onCouponChange }: {
+  onCouponChange: (valid: boolean | null, discount: number) => void
+}) {
   const supabase     = createClient()
   const searchParams = useSearchParams()
-
-  // ?afiliado=PARTNER01 — único parâmetro de URL possível
-  const afiliadoUrl = searchParams.get('afiliado') ?? ''
+  const afiliadoUrl  = searchParams.get('afiliado') ?? ''
 
   const [name,         setName]         = useState('')
   const [email,        setEmail]        = useState('')
   const [whatsapp,     setWhatsapp]     = useState('')
-  const [cnpjCpf,      setCnpjCpf]     = useState('')   // CNPJ se PJ, CPF se PF
-  const [cpf,          setCpf]          = useState('')   // CPF adicional quando PJ
-  const [docType,      setDocType]      = useState<'PJ' | 'PF'>('PJ')
-  const [companyRole,  setCompanyRole]  = useState<'admin' | 'employee' | 'contractor' | ''>('')
-  const [checkingCnpj, setCheckingCnpj] = useState(false)
-  const [cnpjExists,   setCnpjExists]   = useState<boolean | null>(null)
+  const [cpf,          setCpf]          = useState('')
+  const [cnpj,         setCnpj]         = useState('')
   const [password,     setPassword]     = useState('')
   const [confirm,      setConfirm]      = useState('')
   const [showPw,       setShowPw]       = useState(false)
@@ -200,123 +243,92 @@ function SignupForm() {
   const [success,      setSuccess]      = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [couponValid,  setCouponValid]  = useState<boolean | null>(null)
+  const [couponDiscount, setCouponDiscount] = useState<number>(0)
   const [checkingCpn,  setCheckingCpn]  = useState(false)
-  // fromAffiliate = veio via ?afiliado= na URL (trava cupom e afiliado)
+  const [cnpjExists,   setCnpjExists]   = useState<boolean | null>(null)
+  const [checkingCnpj, setCheckingCnpj] = useState(false)
   const [fromAffiliate, setFromAffiliate] = useState(false)
 
-  // Cenário 1: veio com ?afiliado= na URL
-  // → preenche afiliado, busca cupom do afiliado no banco e trava tudo
+  // Carregar afiliado da URL
   useEffect(() => {
     if (!afiliadoUrl) return
     setAfiliado(afiliadoUrl.toUpperCase())
     setFromAffiliate(true)
-    fetchAffiliateCoupon(supabase, afiliadoUrl).then(code => {
-      if (code) { setCoupon(code); setCouponValid(true) }
-    })
-  }, [afiliadoUrl, supabase])
+    supabase
+      .from('coupons')
+      .select('code, discount_pct')
+      .eq('affiliate_code', afiliadoUrl.toUpperCase())
+      .eq('active', true)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setCoupon(data.code)
+          setCouponValid(true)
+          const disc = Number(data.discount_pct) || 0
+          setCouponDiscount(disc)
+          onCouponChange(true, disc)
+        }
+      })
+  }, [afiliadoUrl]) // eslint-disable-line
 
-  // Cenário 2: pessoa digita cupom manualmente
-  // → valida no banco e preenche afiliado automaticamente
+  // Validar cupom digitado
   const handleCouponChange = useCallback(async (val: string) => {
     setCoupon(val)
-    if (!val) { setCouponValid(null); setAfiliado(''); return }
+    if (!val) {
+      setCouponValid(null)
+      setCouponDiscount(0)
+      setAfiliado('')
+      onCouponChange(null, 0)
+      return
+    }
     setCheckingCpn(true)
-    const result = await checkCoupon(supabase, val)
-    setCouponValid(result.valid)
-    setAfiliado(result.affiliateCode ?? '')
-    setCheckingCpn(false)
-  }, [supabase])
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('code, active, affiliate_code, discount_pct')
+      .eq('code', val.toUpperCase())
+      .single()
 
-  // Debounce na digitação do cupom
-  const couponDebounceRef = useCallback(
+    if (error || !data || !data.active) {
+      setCouponValid(false)
+      setCouponDiscount(0)
+      setAfiliado('')
+      onCouponChange(false, 0)
+    } else {
+      const disc = Number(data.discount_pct) || 0
+      setCouponValid(true)
+      setCouponDiscount(disc)
+      setAfiliado(data.affiliate_code ?? '')
+      onCouponChange(true, disc)
+    }
+    setCheckingCpn(false)
+  }, [supabase, onCouponChange])
+
+  // Debounce cupom
+  const debounceRef = useCallback(
     (() => {
       let t: ReturnType<typeof setTimeout>
-      return (val: string) => {
-        clearTimeout(t)
-        t = setTimeout(() => handleCouponChange(val), 600)
-      }
+      return (val: string) => { clearTimeout(t); t = setTimeout(() => handleCouponChange(val), 600) }
     })(),
     [handleCouponChange]
   )
 
-  function maskPhone(v: string) {
-    const n = v.replace(/\D/g, '').slice(0, 11)
-    if (n.length <= 2)  return `(${n}`
-    if (n.length <= 7)  return `(${n.slice(0,2)}) ${n.slice(2)}`
-    return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`
-  }
-
-  function maskDoc(v: string, type: 'CNPJ' | 'CPF') {
-    const n = v.replace(/\D/g, '')
-    if (type === 'CPF') {
-      const s = n.slice(0,11)
-      if (s.length <= 3) return s
-      if (s.length <= 6) return `${s.slice(0,3)}.${s.slice(3)}`
-      if (s.length <= 9) return `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6)}`
-      return `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6,9)}-${s.slice(9)}`
-    }
-    const s = n.slice(0,14)
-    if (s.length <= 2)  return s
-    if (s.length <= 5)  return `${s.slice(0,2)}.${s.slice(2)}`
-    if (s.length <= 8)  return `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5)}`
-    if (s.length <= 12) return `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5,8)}/${s.slice(8)}`
-    return `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5,8)}/${s.slice(8,12)}-${s.slice(12)}`
-  }
-
-  function isValidCPF(cpf: string) {
-    const n = cpf.replace(/\D/g, '')
-    if (n.length !== 11 || /^(\d)+$/.test(n)) return false
-    let sum = 0
-    for (let i = 0; i < 9; i++) sum += parseInt(n[i]) * (10 - i)
-    let r = (sum * 10) % 11
-    if (r === 10 || r === 11) r = 0
-    if (r !== parseInt(n[9])) return false
-    sum = 0
-    for (let i = 0; i < 10; i++) sum += parseInt(n[i]) * (11 - i)
-    r = (sum * 10) % 11
-    if (r === 10 || r === 11) r = 0
-    return r === parseInt(n[10])
-  }
-
-  function isValidCNPJ(cnpj: string) {
-    const n = cnpj.replace(/\D/g, '')
-    if (n.length !== 14 || /^(\d)+$/.test(n)) return false
-    const calc = (s: string, w: number[]) => {
-      let sum = 0
-      for (let i = 0; i < w.length; i++) sum += parseInt(s[i]) * w[i]
-      const r = sum % 11
-      return r < 2 ? 0 : 11 - r
-    }
-    const w1 = [5,4,3,2,9,8,7,6,5,4,3,2]
-    const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2]
-    return calc(n, w1) === parseInt(n[12]) && calc(n, w2) === parseInt(n[13])
-  }
-
-  function isDocValid() {
-    if (!cnpjCpf) return null
-    const n = cnpjCpf.replace(/[^0-9]/g, '')
-    if (docType === 'PF'  && n.length === 11) return isValidCPF(cnpjCpf)
-    if (docType === 'PJ'  && n.length === 14) return isValidCNPJ(cnpjCpf)
-    return null // ainda digitando
-  }
-
-  const docValid = isDocValid()
-
   const pwChecks = validatePassword(password)
   const pwAll    = Object.values(pwChecks).every(Boolean)
   const strength = passwordStrength(password)
+  const cpfValid = cpf.replace(/[^0-9]/g,'').length === 11 ? isValidCPF(cpf) : null
+  const cnpjValid = cnpj.replace(/[^0-9]/g,'').length === 14 ? isValidCNPJ(cnpj) : null
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (docType === 'PF' && docValid === false) { setError('CPF inválido. Verifique os dígitos.'); return }
-    if (docType === 'PJ' && docValid === false) { setError('CNPJ inválido. Verifique os dígitos.'); return }
-    if (docType === 'PJ' && !isValidCPF(cpf))  { setError('CPF inválido. Verifique os dígitos.'); return }
-    if (docType === 'PJ' && !companyRole)       { setError('Selecione sua função na empresa.'); return }
-    if (!pwAll)               { setError('A senha não atende todos os requisitos.'); return }
-    if (password !== confirm) { setError('As senhas não coincidem.'); return }
-    if (!terms)               { setError('Você precisa aceitar os termos de uso.'); return }
+    if (cpfValid === false)  { setError('CPF inválido. Verifique os dígitos.'); return }
+    if (cpfValid === null)   { setError('Informe seu CPF.'); return }
+    if (cnpj && cnpjValid === false) { setError('CNPJ inválido. Verifique os dígitos.'); return }
+    if (!pwAll)              { setError('A senha não atende todos os requisitos.'); return }
+    if (password !== confirm){ setError('As senhas não coincidem.'); return }
+    if (!terms)              { setError('Você precisa aceitar os termos de uso.'); return }
     if (coupon && couponValid === false) { setError('Cupom inválido ou inativo.'); return }
+
     setLoading(true)
     const { error: err } = await supabase.auth.signUp({
       email, password,
@@ -324,11 +336,12 @@ function SignupForm() {
         data: {
           full_name:            name,
           whatsapp,
-          tax_id:               docType === 'PF' ? cnpjCpf : cpf,
-          company_registration: docType === 'PJ' ? cnpjCpf : null,
-          company_role:         docType === 'PJ' ? companyRole : null,
+          tax_id:               cpf,
+          company_registration: cnpj || null,
           afiliado:             afiliado || null,
-          cupom:                coupon   || null,
+          cupom:                coupon        || null,
+          discount_pct:         couponDiscount || 0,
+          final_price:          couponDiscount > 0 ? Number((BASE_PRICE * (1 - couponDiscount / 100)).toFixed(2)) : BASE_PRICE,
         },
       },
     })
@@ -339,29 +352,24 @@ function SignupForm() {
   if (success) return (
     <div style={{ textAlign: 'center', padding: '20px 0' }}>
       <div style={{ fontSize: 44, marginBottom: 16 }}>📧</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: '#f0fffe', marginBottom: 8 }}>
-        Confirme seu e-mail
-      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: '#f0fffe', marginBottom: 8 }}>Confirme seu e-mail</div>
       <p style={{ fontSize: 12, color: '#4a8888', lineHeight: 1.7, marginBottom: 28 }}>
-        Enviamos um link de ativação para{' '}
-        <strong style={{ color: '#07e6d4' }}>{email}</strong>.
+        Enviamos um link de ativação para <strong style={{ color: '#07e6d4' }}>{email}</strong>.
         <br />Clique no link para ativar sua conta.
       </p>
       <Link href="/auth/login" style={{
         display: 'block', background: 'linear-gradient(135deg,#07e6d4,#0891b2)',
         borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700,
         padding: '12px', textAlign: 'center', textDecoration: 'none',
-      }}>
-        Ir para o login
-      </Link>
+      }}>Ir para o login</Link>
     </div>
   )
 
   return (
     <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      <Field label="NOME COMPLETO / RAZÃO SOCIAL">
-        <Input value={name} onChange={setName} placeholder="Ex: João Silva ou Empresa XYZ Ltda" required />
+      <Field label="NOME COMPLETO">
+        <Input value={name} onChange={setName} placeholder="Ex: João Silva" required />
       </Field>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -373,125 +381,69 @@ function SignupForm() {
         </Field>
       </div>
 
-      {/* Tipo de pessoa */}
-      <Field label="TIPO DE CADASTRO">
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([['PJ', 'Pessoa Jurídica'], ['PF', 'Pessoa Física']] as const).map(([val, label]) => (
-            <button key={val} type="button"
-              onClick={() => { setDocType(val); setCnpjCpf(''); setCpf(''); setCompanyRole(''); setCnpjExists(null) }}
-              style={{
-                flex: 1,
-                background: docType === val ? 'rgba(7,230,212,.15)' : 'transparent',
-                border: `1px solid ${docType === val ? '#07e6d4' : '#1e3a3a'}`,
-                borderRadius: 6, color: docType === val ? '#07e6d4' : '#4a8888',
-                fontSize: 11, fontWeight: 700, padding: '9px 14px',
-                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s',
-              }}
-            >{label}</button>
-          ))}
-        </div>
-      </Field>
-
-      {/* CNPJ — só para PJ */}
-      {docType === 'PJ' && (
-        <Field label="CNPJ">
-          <div style={{ position: 'relative' }}>
-            <Input
-              value={cnpjCpf}
-              onChange={v => {
-                const masked = maskDoc(v, 'CNPJ')
-                setCnpjCpf(masked)
-                const digits = masked.replace(/\D/g, '')
-                if (digits.length === 14) {
-                  if (!isValidCNPJ(masked)) { setCnpjExists(null); return }
-                  setCheckingCnpj(true)
-                  supabase.from('companies').select('company_registration')
-                    .eq('company_registration', digits).single()
-                    .then(({ data }) => { setCnpjExists(!!data); setCheckingCnpj(false) })
-                } else { setCnpjExists(null) }
-              }}
-              placeholder="00.000.000/0001-00"
-              required
-              style={{
-                paddingRight: 32,
-                borderColor: docValid === false ? '#ef4444' : docValid === true ? '#07e6d4' : undefined,
-              }}
-            />
-            {checkingCnpj && <span style={iconPos}><span className="spin-sm" /></span>}
-            {!checkingCnpj && docValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
-            {!checkingCnpj && docValid === false && cnpjCpf && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
-          </div>
-          {docValid === false && cnpjCpf && <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>CNPJ inválido</p>}
-          {cnpjExists === true  && <p style={{ fontSize: 10, color: '#07e6d4', margin: '4px 0 0' }}>✓ Empresa já cadastrada — você será vinculado</p>}
-          {cnpjExists === false && docValid === true && <p style={{ fontSize: 10, color: '#4a8888', margin: '4px 0 0' }}>Nova empresa — será cadastrada automaticamente</p>}
-        </Field>
-      )}
-
-      {/* CPF — para PF e também para PJ (sócio precisa informar CPF) */}
-      <Field label={docType === 'PJ' ? 'SEU CPF' : 'CPF'}>
+      {/* CPF obrigatório */}
+      <Field label="CPF">
         <div style={{ position: 'relative' }}>
           <Input
-            value={docType === 'PJ' ? cpf : cnpjCpf}
-            onChange={v => docType === 'PJ' ? setCpf(maskDoc(v, 'CPF')) : setCnpjCpf(maskDoc(v, 'CPF'))}
-            placeholder="000.000.000-00"
-            required
+            value={cpf} onChange={v => setCpf(maskCPF(v))}
+            placeholder="000.000.000-00" required
             style={{
               paddingRight: 32,
-              borderColor: docType === 'PF' && docValid === false ? '#ef4444'
-                         : docType === 'PF' && docValid === true  ? '#07e6d4'
-                         : docType === 'PJ' && cpf.replace(/\D/g,'').length === 11 && !isValidCPF(cpf) ? '#ef4444'
-                         : docType === 'PJ' && isValidCPF(cpf) ? '#07e6d4'
-                         : undefined,
+              borderColor: cpfValid === true ? '#07e6d4' : cpfValid === false ? '#ef4444' : undefined,
             }}
           />
-          {docType === 'PF' && docValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
-          {docType === 'PF' && docValid === false && cnpjCpf && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
-          {docType === 'PJ' && isValidCPF(cpf)   && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
-          {docType === 'PJ' && cpf.replace(/\D/g,'').length === 11 && !isValidCPF(cpf) && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
+          {cpfValid === true  && <IcoStatus ok={true} />}
+          {cpfValid === false && <IcoStatus ok={false} />}
         </div>
-        {docType === 'PF' && docValid === false && cnpjCpf && <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>CPF inválido</p>}
+        {cpfValid === false && <p style={errTxt}>CPF inválido</p>}
       </Field>
 
-      {/* Função na empresa — só para PJ */}
-      {docType === 'PJ' && (
-        <Field label="FUNÇÃO NA EMPRESA">
-          <div style={{ display: 'flex', gap: 8 }}>
-            {([['admin', 'Sócio / Admin'], ['employee', 'Colaborador'], ['contractor', 'Consultor / Prestador']] as const).map(([val, label]) => (
-              <button key={val} type="button"
-                onClick={() => setCompanyRole(val)}
-                style={{
-                  flex: 1,
-                  background: companyRole === val ? 'rgba(7,230,212,.15)' : 'transparent',
-                  border: `1px solid ${companyRole === val ? '#07e6d4' : '#1e3a3a'}`,
-                  borderRadius: 6, color: companyRole === val ? '#07e6d4' : '#4a8888',
-                  fontSize: 10, fontWeight: 700, padding: '8px 6px',
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s', textAlign: 'center',
-                }}
-              >{label}</button>
-            ))}
-          </div>
-        </Field>
-      )}
-
-      <Field label="SENHA (mín. 12 caracteres, maiúscula, número e especial)">
+      {/* CNPJ opcional */}
+      <Field label="CNPJ (opcional)">
         <div style={{ position: 'relative' }}>
           <Input
-            type={showPw ? 'text' : 'password'}
-            value={password} onChange={setPassword}
-            placeholder="Mínimo 12 caracteres" required
-            style={{ paddingRight: 40 }}
+            value={cnpj}
+            onChange={v => {
+              const masked = maskCNPJ(v)
+              setCnpj(masked)
+              const digits = masked.replace(/[^0-9]/g, '')
+              if (digits.length === 14 && isValidCNPJ(masked)) {
+                setCheckingCnpj(true)
+                supabase.from('companies').select('company_registration')
+                  .eq('company_registration', digits).single()
+                  .then(({ data }) => { setCnpjExists(!!data); setCheckingCnpj(false) })
+              } else { setCnpjExists(null) }
+            }}
+            placeholder="00.000.000/0001-00"
+            style={{
+              paddingRight: 32,
+              borderColor: cnpjValid === true ? '#07e6d4' : cnpjValid === false ? '#ef4444' : undefined,
+            }}
           />
+          {checkingCnpj && <span style={iconPos}><span className="spin-sm" /></span>}
+          {!checkingCnpj && cnpjValid === true  && <IcoStatus ok={true} />}
+          {!checkingCnpj && cnpjValid === false && <IcoStatus ok={false} />}
+        </div>
+        {cnpjValid === false && <p style={errTxt}>CNPJ inválido</p>}
+        {cnpjExists === true  && <p style={{ ...errTxt, color: '#07e6d4' }}>✓ Empresa já cadastrada — você será vinculado</p>}
+        {cnpjExists === false && cnpjValid === true && <p style={{ ...errTxt, color: '#7aabab' }}>Nova empresa — será cadastrada automaticamente</p>}
+        <p style={{ fontSize: 10, color: '#4a8888', margin: '6px 0 0', lineHeight: 1.5 }}>
+          💡 Informar o CNPJ desbloqueia funcionalidades exclusivas para empresas
+        </p>
+      </Field>
+
+      {/* Senha */}
+      <Field label="SENHA (mín. 12 caracteres, maiúscula, número e especial)">
+        <div style={{ position: 'relative' }}>
+          <Input type={showPw ? 'text' : 'password'} value={password} onChange={setPassword}
+            placeholder="Mínimo 12 caracteres" required style={{ paddingRight: 40 }} />
           <EyeBtn show={showPw} toggle={() => setShowPw(v => !v)} />
         </div>
         {password && (
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
               {[1,2,3,4].map(i => (
-                <div key={i} style={{
-                  flex: 1, height: 2.5, borderRadius: 2,
-                  background: i <= strength.score ? strength.color : '#0d2525',
-                  transition: 'background .3s',
-                }} />
+                <div key={i} style={{ flex: 1, height: 2.5, borderRadius: 2, background: i <= strength.score ? strength.color : '#0d2525', transition: 'background .3s' }} />
               ))}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px' }}>
@@ -504,67 +456,80 @@ function SignupForm() {
         )}
       </Field>
 
+      {/* Confirmar senha */}
       <Field label="CONFIRMAR SENHA">
         <div style={{ position: 'relative' }}>
-          <Input
-            type={showConf ? 'text' : 'password'}
-            value={confirm} onChange={setConfirm}
+          <Input type={showConf ? 'text' : 'password'} value={confirm} onChange={setConfirm}
             placeholder="Repita a senha" required
-            style={{
-              paddingRight: 40,
-              borderColor: confirm && confirm !== password ? '#ef4444' : undefined,
-            }}
-          />
+            style={{ paddingRight: 40, borderColor: confirm && confirm !== password ? '#ef4444' : undefined }} />
           <EyeBtn show={showConf} toggle={() => setShowConf(v => !v)} />
         </div>
-        {confirm && confirm !== password && (
-          <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>As senhas não coincidem</p>
-        )}
+        {confirm && confirm !== password && <p style={errTxt}>As senhas não coincidem</p>}
       </Field>
 
+      {/* Cupom + Afiliado */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="CUPOM DE DESCONTO">
           <div style={{ position: 'relative' }}>
             <Input
               value={coupon}
-              onChange={v => { setCoupon(v); couponDebounceRef(v) }}
+              onChange={v => { setCoupon(v); debounceRef(v) }}
               placeholder="CUPOM123"
               disabled={fromAffiliate}
               style={{
                 paddingRight: 32,
-                borderColor: couponValid === false ? '#ef4444' : couponValid === true ? '#07e6d4' : undefined,
+                borderColor: couponValid === true ? '#07e6d4' : couponValid === false ? '#ef4444' : undefined,
                 opacity: fromAffiliate ? .5 : 1,
               }}
             />
             {checkingCpn && <span style={iconPos}><span className="spin-sm" /></span>}
-            {!checkingCpn && couponValid === true  && <span style={{ ...iconPos, color: '#07e6d4', fontSize: 12 }}>✓</span>}
-            {!checkingCpn && couponValid === false && coupon && <span style={{ ...iconPos, color: '#ef4444', fontSize: 12 }}>✕</span>}
+            {!checkingCpn && couponValid === true  && <IcoStatus ok={true} />}
+            {!checkingCpn && couponValid === false && coupon && <IcoStatus ok={false} />}
           </div>
-          {couponValid === false && coupon && <p style={{ fontSize: 10, color: '#ef4444', margin: '4px 0 0' }}>Cupom inválido</p>}
-          {couponValid === true  && <p style={{ fontSize: 10, color: '#07e6d4', margin: '4px 0 0' }}>✓ Cupom válido!</p>}
+          {couponValid === false && coupon && <p style={errTxt}>Cupom inválido</p>}
+          {couponValid === true  && <p style={{ ...errTxt, color: '#07e6d4' }}>✓ Desconto aplicado!</p>}
         </Field>
 
         <Field label="CÓDIGO DE PARCEIRO">
-          <Input
-            value={afiliado} onChange={() => {}}
-            placeholder="Preenchido automaticamente"
-            disabled={true}
-            style={{ opacity: afiliado ? 1 : .4, cursor: 'not-allowed' }}
-          />
+          <Input value={afiliado} onChange={() => {}} placeholder="Automático"
+            disabled style={{ opacity: afiliado ? 1 : .4 }} />
         </Field>
       </div>
 
+      {/* Resumo desconto */}
+      {couponValid === true && couponDiscount > 0 && (
+        <div style={{
+          background: 'rgba(7,230,212,.06)', border: '1px solid rgba(7,230,212,.2)',
+          borderRadius: 8, padding: '12px 14px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#4a8888', marginBottom: 2 }}>APÓS OS 7 DIAS GRÁTIS</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: '#07e6d4' }}>
+                R$ {(BASE_PRICE * (1 - couponDiscount / 100)).toFixed(2).replace('.', ',')}
+              </span>
+              <span style={{ fontSize: 11, color: '#4a8888' }}>/mês</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: 11, color: '#7aabab', textDecoration: 'line-through' }}>R$ {BASE_PRICE},00</span>
+            <div style={{ fontSize: 10, background: 'rgba(7,230,212,.15)', color: '#07e6d4', padding: '2px 8px', borderRadius: 4, fontWeight: 700, marginTop: 4 }}>
+              -{couponDiscount}% OFF
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Termos */}
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
-        <div
-          onClick={() => setTerms(v => !v)}
-          style={{
-            width: 17, height: 17, minWidth: 17,
-            background: terms ? 'rgba(7,230,212,.2)' : 'transparent',
-            border: `1.5px solid ${terms ? '#07e6d4' : '#1e3a3a'}`,
-            borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginTop: 1, transition: 'all .2s',
-          }}
-        >
+        <div onClick={() => setTerms(v => !v)} style={{
+          width: 17, height: 17, minWidth: 17,
+          background: terms ? 'rgba(7,230,212,.2)' : 'transparent',
+          border: `1.5px solid ${terms ? '#07e6d4' : '#1e3a3a'}`,
+          borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginTop: 1, transition: 'all .2s',
+        }}>
           {terms && <span style={{ color: '#07e6d4', fontSize: 10, lineHeight: 1 }}>✓</span>}
         </div>
         <span style={{ fontSize: 11, color: '#4a8888', lineHeight: 1.5 }}>
@@ -577,10 +542,7 @@ function SignupForm() {
       </label>
 
       {error && (
-        <div style={{
-          background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.25)',
-          borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#fca5a5',
-        }}>
+        <div style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.25)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#fca5a5' }}>
           {error}
         </div>
       )}
@@ -595,7 +557,7 @@ function SignupForm() {
         transition: 'opacity .2s',
       }}>
         {loading && <span className="spinner" />}
-        {loading ? 'Criando conta...' : 'Criar conta'}
+        {loading ? 'Criando conta...' : 'Criar conta grátis'}
       </button>
     </form>
   )
@@ -647,6 +609,14 @@ function EyeBtn({ show, toggle }: { show: boolean; toggle: () => void }) {
   )
 }
 
+function IcoStatus({ ok }: { ok: boolean }) {
+  return (
+    <span style={{ ...iconPos, color: ok ? '#07e6d4' : '#ef4444', fontSize: 12 }}>
+      {ok ? '✓' : '✕'}
+    </span>
+  )
+}
+
 function Chk({ ok, text }: { ok: boolean; text: string }) {
   return (
     <span style={{ fontSize: 10, color: ok ? '#07e6d4' : '#1e3a3a', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -661,55 +631,37 @@ function Styles() {
       @keyframes spin { to { transform: rotate(360deg); } }
       .spinner { width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block; }
       .spin-sm  { width:11px;height:11px;border:1.5px solid rgba(7,230,212,.3);border-top-color:#07e6d4;border-radius:50%;animation:spin .7s linear infinite;display:inline-block; }
-      input::placeholder { color: #1e3a3a; }
+      input::placeholder { color: #2d5555; }
       input:disabled { cursor: not-allowed; }
       ::-webkit-scrollbar { width: 5px; }
       ::-webkit-scrollbar-thumb { background: #1e3a3a; border-radius: 3px; }
-      @media (max-width: 800px) {
-        .signup-left     { display: none !important; }
-        .signup-divider  { display: none !important; }
-        .signup-right    { padding: 32px 24px !important; }
-      }
     `}</style>
   )
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-const iconPos: React.CSSProperties = {
-  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-}
+const iconPos: React.CSSProperties = { position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }
+const errTxt: React.CSSProperties  = { fontSize: 10, color: '#ef4444', margin: '4px 0 0' }
 
 const pageStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0,
-  background: '#060d14',
+  position: 'fixed', inset: 0, background: '#060d14',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   fontFamily: "'Inter', system-ui, sans-serif",
   padding: 16, overflowY: 'auto',
 }
 
 const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  width: '100%',
-  maxWidth: 960,
-  minHeight: 580,
-  background: '#0a0f1a',
-  border: '1px solid #1e3a3a',
-  borderRadius: 20,
-  boxShadow: '0 16px 60px rgba(0,0,0,.8)',
-  overflow: 'hidden',
+  display: 'flex', width: '100%', maxWidth: 960, minHeight: 580,
+  background: '#0a0f1a', border: '1px solid #1e3a3a',
+  borderRadius: 20, boxShadow: '0 16px 60px rgba(0,0,0,.8)', overflow: 'hidden',
 }
 
 const leftColStyle: React.CSSProperties = {
-  flex: '1 1 0',
-  padding: '48px 44px',
-  display: 'flex',
-  flexDirection: 'column',
+  flex: '1 1 0', padding: '48px 44px', display: 'flex', flexDirection: 'column',
   background: 'linear-gradient(160deg, #0a1520 0%, #060d14 100%)',
   borderRight: '1px solid #0d2525',
 }
 
 const rightColStyle: React.CSSProperties = {
-  flex: '1 1 0',
-  padding: '48px 44px',
-  overflowY: 'auto',
+  flex: '1 1 0', padding: '48px 44px', overflowY: 'auto',
 }
