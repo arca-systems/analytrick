@@ -1,65 +1,65 @@
 # Analytrick Web
 
-Painel web do Analytrick — consome dados do Supabase coletados pela extensão Chrome.
-
-## Stack
-
-- **Next.js 14** (App Router)
-- **Tailwind CSS**
-- **Supabase** (banco de dados + auth)
-- **Vercel** (deploy)
-
-## Setup local
-
-```bash
-# 1. Instalar dependências
-npm install
-
-# 2. Configurar variáveis de ambiente
-cp .env.local.example .env.local
-# Editar .env.local com suas chaves do Supabase
-
-# 3. Rodar em desenvolvimento
-npm run dev
-```
-
-Acesse http://localhost:3000
-
-## Deploy no Vercel
-
-1. Suba o projeto no GitHub
-2. Conecte o repositório no Vercel
-3. Faça a integração Vercel ↔ Supabase nas configurações
-4. As variáveis de ambiente são injetadas automaticamente
+SPA fiel à extensão Chrome. Mesma interface, mesmas tabelas, mesmo comportamento — sem o módulo Navegação (exclusivo da extensão).
 
 ## Estrutura
 
 ```
 app/
-  (auth)/login/     → Página de login
-  (app)/
-    dashboard/      → KPIs gerais
-    anuncios/       → Tabela de anúncios (página principal)
-    categorias/     → Módulo de categorias
-    marcas/         → Módulo de marcas
-    vendedores/     → Módulo de vendedores
-    tendencias/     → Módulo de tendências
-    destaques/      → Módulo de destaques
+  page.tsx              → redirect /app ou /auth/login
+  app/page.tsx          → SPA completo (AnalytrickApp)
+  auth/login/page.tsx   → Login
+  auth/callback/route   → OAuth callback
+
 components/
-  layout/           → Sidebar, Header
-  ui/               → Componentes reutilizáveis
-  charts/           → Gráficos (Recharts)
-  tables/           → Tabelas genéricas
+  AnalytrickApp.tsx     → SPA principal (H1 + tabs + conteúdo)
+  table/DataTable.tsx   → Tabela reutilizável (sort, filtro, col manager, paginação)
+
 lib/
-  supabase/         → Clients (browser e server)
-types/              → Tipos TypeScript
+  supabase/server.ts    → Client server-side
+  supabase/client.ts    → Client browser
+  renderCell.tsx        → Port fiel do renderCell da extensão
+  colDefs.ts            → Definições de colunas por módulo
+
+types/index.ts          → Tipos TypeScript
 ```
 
-## Módulos futuros
+## Setup
 
-- [ ] Calculadora de precificação
-- [ ] Cadastro de produtos por EAN/GTIN
-- [ ] Associação produto ↔ anúncios
-- [ ] Margem de lucro por anúncio
-- [ ] Tabela dinâmica (pivot)
-```
+1. Clone o repo
+2. `npm install`
+3. Copie `.env.local.example` para `.env.local` e preencha com suas credenciais Supabase
+4. `npm run dev`
+
+## Deploy Vercel
+
+1. Push para GitHub
+2. Conecte ao Vercel
+3. Adicione as variáveis de ambiente no painel do Vercel:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+## Canal de dados
+
+O dropdown de canal no H1 controla quais módulos ficam disponíveis:
+
+| Canal         | Módulos disponíveis                                          |
+|---------------|--------------------------------------------------------------|
+| Sem canal     | Categorias, Marcas                                            |
+| Mercado Livre | Anúncios, Categorias, Marcas, Tendências, Vendedores, TOP100, Destaques |
+
+## Tabelas Supabase esperadas
+
+- `mercadolibre_items` — anúncios e destaques
+- `mercadolibre_categories` — categorias
+- `mercadolibre_brands` — marcas
+- `mercadolibre_trends` — tendências
+- `mercadolibre_users` — vendedores
+- `mercadolibre_top100` — ranking top 100
+
+## Diferenças da extensão
+
+- **Sem módulo Navegação** — depende de scraping de páginas ML, não existe em web
+- **Sem colunas pos/pg/ps/offers** — exclusivas da navegação
+- **Dados do banco** — tudo carregado do Supabase diretamente (sem scraping)
+- **SPA** — uma única URL (`/app`), troca de módulo sem navegação
