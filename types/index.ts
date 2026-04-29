@@ -115,3 +115,36 @@ export interface ColDef {
   visible: boolean
   fixed?: boolean
 }
+
+export interface MLItem {
+  item_id: string
+  title?: string
+  price?: number
+  original_price?: number
+  sold_quantity?: number
+  item_sold_quantity?: number
+  available_quantity?: number
+  listing_type_id?: string
+  listing_type?: string
+  category_id?: string
+  seller_id?: number
+  seller_name?: string
+  reputation_level?: string
+  power_seller_status?: string
+  official_store?: string
+  shipping_mode?: string
+  shipping_logistic_type?: string
+  shipping_tags?: string[]
+  attributes_brand?: string
+  attributes_model?: string
+  thumbnail?: string
+  permalink?: string
+  gold_pro_fee?: number
+  gold_special_fee?: number
+  billable_weight?: number
+  health?: number
+  visits?: number
+  item_created_at?: string
+  receita?: number
+  status?: string
+}
